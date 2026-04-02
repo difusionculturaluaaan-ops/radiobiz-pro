@@ -10,6 +10,8 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getDatabase, ref, set, get, push, remove, update, onValue, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
 // ═══ FIREBASE CONFIG ═══
 const firebaseConfig = {
@@ -24,10 +26,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
 
 // ═══ STATE ═══
-let PIN = localStorage.getItem('rbz_pin') || '1234';
-let pinBuf = '';
 let clients = {};
 let editingId = null;
 let ctrlClientId = null;
@@ -46,42 +47,42 @@ function fbListen(path, cb) { onValue(ref(db, path), s => cb(s.exists() ? s.val(
 // ═══ BOOT ═══
 window.addEventListener('DOMContentLoaded', () => {
   initTheme();
-  document.addEventListener('keydown', e => {
-    if(document.getElementById('pinScreen').style.display !== 'none') {
-      if(e.key >= '0' && e.key <= '9') pk(e.key);
-      if(e.key === 'Enter') ps();
-      if(e.key === 'Backspace') pb();
+  document.getElementById('baseUrlInput').value = BASE_URL;
+  document.getElementById('loginPass').addEventListener('keydown', e => {
+    if(e.key === 'Enter') doLogin();
+  });
+  let appInited = false;
+  onAuthStateChanged(auth, user => {
+    if(user) {
+      document.getElementById('pinScreen').style.display='none';
+      document.getElementById('app').style.display='block';
+      if(!appInited) { appInited = true; initApp(); }
+    } else {
+      appInited = false;
+      document.getElementById('pinScreen').style.display='flex';
+      document.getElementById('app').style.display='none';
     }
   });
-  document.getElementById('baseUrlInput').value = BASE_URL;
 });
 
-// ═══ PIN ═══
-window.pk = k => { if(pinBuf.length>=4)return; pinBuf+=k; for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('on',i<pinBuf.length); if(pinBuf.length===4) setTimeout(ps,180); };
-window.pb = () => { pinBuf=pinBuf.slice(0,-1); for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('on',i<pinBuf.length); };
-window.ps = () => {
-  if(pinBuf === PIN) {
-    document.getElementById('pinScreen').style.display='none';
-    document.getElementById('app').style.display='block';
-    initApp();
-  } else {
-    document.getElementById('pinErr').textContent='PIN incorrecto';
-    pinBuf=''; for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.remove('on');
-    setTimeout(()=>document.getElementById('pinErr').textContent='',2000);
+// ═══ AUTH ═══
+window.doLogin = async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('pinErr');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Ingresa email y contraseña'; return; }
+  try {
+    document.getElementById('loginBtn').textContent = 'Entrando...';
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    const msg = (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found')
+      ? 'Credenciales incorrectas' : 'Error: ' + e.message;
+    errEl.textContent = msg;
+    document.getElementById('loginBtn').textContent = 'Entrar →';
   }
 };
-window.lockDash = () => {
-  pinBuf=''; for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.remove('on');
-  document.getElementById('pinScreen').style.display='flex';
-  document.getElementById('app').style.display='none';
-};
-window.changeMasterPin = () => {
-  const np = document.getElementById('newMasterPin').value.trim();
-  if(!/^\d{4}$/.test(np)){toast('PIN debe ser 4 dígitos','error');return;}
-  PIN=np; localStorage.setItem('rbz_pin',PIN);
-  document.getElementById('newMasterPin').value='';
-  toast('✅ PIN actualizado','success');
-};
+window.lockDash = () => signOut(auth).then(() => location.reload());
 
 // ═══ THEME ═══
 window.toggleTheme = () => {
@@ -900,19 +901,19 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
   <button class="theme-btn" onclick="toggleTheme()"><span id="pTI">☀️</span><span id="pTT">Modo claro</span></button>
   <div class="pin-card">
     <h2>Acceso al dashboard</h2>
-    <p>PIN maestro de 4 dígitos</p>
-    <div class="pin-dots">
-      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+    <p>Credenciales de administrador</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin:18px 0;">
+      <input type="email" id="loginEmail" placeholder="Email" autocomplete="username"
+        style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s;"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+      <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"
+        style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s;"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
     </div>
-    <div class="pin-grid">
-      <button class="pk" onclick="pk('1')">1</button><button class="pk" onclick="pk('2')">2</button><button class="pk" onclick="pk('3')">3</button>
-      <button class="pk" onclick="pk('4')">4</button><button class="pk" onclick="pk('5')">5</button><button class="pk" onclick="pk('6')">6</button>
-      <button class="pk" onclick="pk('7')">7</button><button class="pk" onclick="pk('8')">8</button><button class="pk" onclick="pk('9')">9</button>
-      <button class="pk" onclick="pb()">⌫</button><button class="pk" onclick="pk('0')">0</button><button class="pk go" onclick="ps()">✓</button>
-    </div>
+    <button id="loginBtn" onclick="doLogin()"
+      style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#6358e8);color:#fff;border:none;font-size:.95rem;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;transition:opacity .2s;"
+      onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Entrar →</button>
     <div class="pin-err" id="pinErr"></div>
-    <p class="pin-hint">PIN por defecto: 1234</p>
   </div>
 </div>
 
@@ -1032,8 +1033,8 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
       <div style="max-width:480px;display:flex;flex-direction:column;gap:13px;">
         <div class="settings-section">
           <div class="sl">🔐 Seguridad</div>
-          <div class="fg" style="margin-bottom:11px;"><label>PIN maestro del dashboard</label><input type="password" id="newMasterPin" placeholder="Nuevo PIN de 4 dígitos" maxlength="4"></div>
-          <button class="btn primary" onclick="changeMasterPin()" style="width:100%;">💾 Actualizar PIN</button>
+          <p style="font-size:.78rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:11px;">Autenticado con Firebase Auth. Para cambiar contraseña usa la consola de Firebase.</p>
+          <button class="btn" onclick="lockDash()" style="width:100%;color:var(--warn);border-color:var(--warn)40;">🔒 Cerrar sesión</button>
         </div>
         <div class="settings-section">
           <div class="sl">🌐 URL del reproductor</div>

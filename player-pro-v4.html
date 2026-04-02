@@ -629,6 +629,8 @@ body.locked .force-btn{display:none;}
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getDatabase, ref, get, set, update, remove, onValue, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+import { getAuth, signInAnonymously }
+  from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDgE9XssX6VT1SxQuDzR-FOnq4S7FE3Zcw",
@@ -641,6 +643,9 @@ const firebaseConfig = {
 };
 const fbApp = initializeApp(firebaseConfig);
 const fbDb = getDatabase(fbApp);
+const fbAuth = getAuth(fbApp);
+// Autenticación anónima requerida por Firebase Security Rules
+const authReady = signInAnonymously(fbAuth).catch(() => {});
 
 // Session ID for this device
 const SESSION_ID = 'sess_' + Math.random().toString(36).substring(2,10);
@@ -649,6 +654,7 @@ let fbPingInterval = null;
 
 // Validate client access code against Firebase
 window.fbValidateClient = async (clientId, code) => {
+  await authReady;
   try {
     const snap = await get(ref(fbDb, 'clients/'+clientId));
     if(!snap.exists()) return { valid: false, reason: 'Cliente no encontrado' };
@@ -661,6 +667,7 @@ window.fbValidateClient = async (clientId, code) => {
 
 // Register session (device connected)
 window.fbRegisterSession = async (clientId) => {
+  await authReady;
   fbClientId = clientId;
   await set(ref(fbDb, 'sessions/'+SESSION_ID), {
     clientId, lastPing: Date.now(), userAgent: navigator.userAgent.substring(0,80)
