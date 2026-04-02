@@ -34,7 +34,7 @@ let ctrlClientId = null;
 let isPlaying = false;
 let qrCurrentLink = '';
 let BASE_URL = localStorage.getItem('rbz_base_url') ||
-  (window.location.origin + window.location.pathname.replace('dashboard.html','player-pro-v4.html'));
+  'https://radiobiz-pro.vercel.app/player-pro-v4.html';
 
 // ═══ FIREBASE HELPERS ═══
 async function fbSet(path, data) { await set(ref(db, path), data); }
