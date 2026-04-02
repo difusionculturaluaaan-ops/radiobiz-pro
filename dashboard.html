@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RadioBiz — Dashboard Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getDatabase, ref, set, get, push, remove, update, onValue, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+
+// ═══ FIREBASE CONFIG ═══
+const firebaseConfig = {
+  apiKey: "AIzaSyDgE9XssX6VT1SxQuDzR-FOnq4S7FE3Zcw",
+  authDomain: "proradiobiz.firebaseapp.com",
+  databaseURL: "https://proradiobiz-default-rtdb.firebaseio.com",
+  projectId: "proradiobiz",
+  storageBucket: "proradiobiz.firebasestorage.app",
+  messagingSenderId: "601173283890",
+  appId: "1:601173283890:web:ee0af646f3b06e3878d82b"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ═══ STATE ═══
+let PIN = localStorage.getItem('rbz_pin') || '1234';
+let pinBuf = '';
+let clients = {};
+let editingId = null;
+let ctrlClientId = null;
+let isPlaying = false;
+let qrCurrentLink = '';
+let BASE_URL = localStorage.getItem('rbz_base_url') ||
+  (window.location.origin + window.location.pathname.replace('dashboard.html','player-pro-v4.html'));
+
+// ═══ FIREBASE HELPERS ═══
+async function fbSet(path, data) { await set(ref(db, path), data); }
+async function fbGet(path) { const s = await get(ref(db, path)); return s.exists() ? s.val() : null; }
+async function fbUpdate(path, data) { await update(ref(db, path), data); }
+async function fbRemove(path) { await remove(ref(db, path)); }
+function fbListen(path, cb) { onValue(ref(db, path), s => cb(s.exists() ? s.val() : null)); }
+
+// ═══ BOOT ═══
+window.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  document.addEventListener('keydown', e => {
+    if(document.getElementById('pinScreen').style.display !== 'none') {
+      if(e.key >= '0' && e.key <= '9') pk(e.key);
+      if(e.key === 'Enter') ps();
+      if(e.key === 'Backspace') pb();
+    }
+  });
+  document.getElementById('baseUrlInput').value = BASE_URL;
+});
+
+// ═══ PIN ═══
+window.pk = k => { if(pinBuf.length>=4)return; pinBuf+=k; for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('on',i<pinBuf.length); if(pinBuf.length===4) setTimeout(ps,180); };
+window.pb = () => { pinBuf=pinBuf.slice(0,-1); for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('on',i<pinBuf.length); };
+window.ps = () => {
+  if(pinBuf === PIN) {
+    document.getElementById('pinScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+    initApp();
+  } else {
+    document.getElementById('pinErr').textContent='PIN incorrecto';
+    pinBuf=''; for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.remove('on');
+    setTimeout(()=>document.getElementById('pinErr').textContent='',2000);
+  }
+};
+window.lockDash = () => {
+  pinBuf=''; for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.remove('on');
+  document.getElementById('pinScreen').style.display='flex';
+  document.getElementById('app').style.display='none';
+};
+window.changeMasterPin = () => {
+  const np = document.getElementById('newMasterPin').value.trim();
+  if(!/^\d{4}$/.test(np)){toast('PIN debe ser 4 dígitos','error');return;}
+  PIN=np; localStorage.setItem('rbz_pin',PIN);
+  document.getElementById('newMasterPin').value='';
+  toast('✅ PIN actualizado','success');
+};
+
+// ═══ THEME ═══
+window.toggleTheme = () => {
+  const html=document.documentElement;
+  const next=html.getAttribute('data-theme')==='dark'?'light':'dark';
+  html.setAttribute('data-theme',next); localStorage.setItem('rbz_theme',next);
+  updateThemeBtn(next);
+};
+function updateThemeBtn(t){
+  const d=t==='dark';
+  document.getElementById('themeIcon').textContent=d?'☀️':'🌙';
+  document.getElementById('themeTxt').textContent=d?'Modo claro':'Modo oscuro';
+}
+function initTheme(){
+  const s=localStorage.getItem('rbz_theme')||'dark';
+  document.documentElement.setAttribute('data-theme',s); updateThemeBtn(s);
+}
+
+// ═══ INIT APP ═══
+function initApp() {
+  document.getElementById('overviewDate').textContent =
+    new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  // Listen to clients in real time
+  fbListen('clients', data => {
+    clients = data || {};
+    renderOverview();
+    if(document.getElementById('page-clients').classList.contains('active')) renderAllClients();
+    if(document.getElementById('page-control').classList.contains('active')) renderCtrlTabs();
+    updateOverviewStats();
+  });
+  // Listen to sessions in real time (connected devices)
+  fbListen('sessions', data => {
+    updateSessionBadges(data || {});
+  });
+}
+
+// ═══ OVERVIEW STATS ═══
+function updateOverviewStats() {
+  const count = Object.keys(clients).length;
+  document.getElementById('ovClients').textContent = count;
+  document.getElementById('ovLinks').textContent = count;
+  document.getElementById('ovJingles').textContent = count;
+  document.getElementById('clientsBadge').textContent = count;
+}
+
+function updateSessionBadges(sessions) {
+  // Count active sessions per client (active = last ping < 3 min ago)
+  const now = Date.now();
+  const active = {};
+  Object.values(sessions).forEach(s => {
+    if(s.clientId && (now - s.lastPing) < 3*60*1000) {
+      active[s.clientId] = (active[s.clientId]||0) + 1;
+    }
+  });
+  // Total connected
+  const total = Object.values(active).reduce((a,b)=>a+b,0);
+  document.getElementById('ovConnected').textContent = total;
+  // Update per-client badges
+  Object.keys(clients).forEach(id => {
+    const el = document.getElementById('sessions-'+id);
+    if(el) {
+      const n = active[id]||0;
+      el.textContent = n > 0 ? `🟢 ${n} conectado${n>1?'s':''}` : '⚫ Sin conexiones';
+      el.style.color = n > 0 ? 'var(--green)' : 'var(--muted)';
+    }
+  });
+}
+
+// ═══ GENERATE LINK ═══
+function generateLink(c) {
+  const p = new URLSearchParams({
+    nombre: c.name,
+    folder: c.folder,
+    pin: c.pin,
+    intervalo: c.intervalo,
+    locked: '1',
+    fade: c.fade||'2',
+    code: c.code, // unique access code
+    cid: c.id,   // client ID for session tracking
+  });
+  if(c.radio) p.set('radio', c.radio);
+  if(c.musicfolder) p.set('musicfolder', c.musicfolder);
+  return BASE_URL + '?' + p.toString();
+}
+
+function generateCode() {
+  return Math.random().toString(36).substring(2,10).toUpperCase();
+}
+
+// ═══ NAVIGATION ═══
+window.goPage = id => {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+  if(id==='clients') renderAllClients();
+  if(id==='overview') renderOverview();
+  if(id==='control') renderCtrlTabs();
+  if(id==='pagos') renderPagos();
+  if(id==='settings') document.getElementById('baseUrlInput').value=BASE_URL;
+};
+
+// ═══ RENDER ═══
+function renderOverview() {
+  updateOverviewStats();
+  const list = Object.values(clients).slice(0,4);
+  const el = document.getElementById('overviewClients');
+  if(!list.length) {
+    el.innerHTML=`<div class="add-card" onclick="openAddModal()"><div class="ai">➕</div><h3>Agregar primer cliente</h3><p>Haz clic para configurar tu primer negocio</p></div>`;
+    return;
+  }
+  renderClientCards(el, list);
+}
+
+function renderAllClients() {
+  const el = document.getElementById('allClients');
+  const list = Object.values(clients);
+  renderClientCards(el, list);
+  const addDiv = document.createElement('div');
+  addDiv.className='add-card'; addDiv.onclick=openAddModal;
+  addDiv.innerHTML='<div class="ai">➕</div><h3>Nuevo cliente</h3><p>Agregar negocio</p>';
+  el.appendChild(addDiv);
+}
+
+function renderClientCards(container, list) {
+  container.innerHTML='';
+  list.forEach(c => {
+    const link = generateLink(c);
+    const radioName = c.radio?(c.radio.includes('somafm')?(c.radio.split('/').pop().split('-')[0]||'Stream'):'Radio personalizada'):'Sin radio';
+    const isBlocked = c.blocked === true;
+    const div = document.createElement('div');
+    div.className = 'client-card' + (isBlocked?' blocked':'');
+    div.innerHTML=`
+      <div class="cc-header">
+        <div class="cc-avatar">${c.emoji||'🏪'}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="cc-name">${c.name} ${isBlocked?'<span style="font-size:.6rem;background:var(--red)22;color:var(--red);border:1px solid var(--red)40;border-radius:99px;padding:1px 7px;">BLOQUEADO</span>':''}</div>
+          <div class="cc-sub">PIN: ${c.pin} · ${c.intervalo} min · ${radioName}</div>
+        </div>
+        <button onclick="toggleBlock('${c.id}')" style="background:${isBlocked?'var(--green)18':'var(--red)12'};border:1px solid ${isBlocked?'var(--green)40':'var(--red)30'};color:${isBlocked?'var(--green)':'var(--red)'};border-radius:8px;padding:5px 10px;cursor:pointer;font-size:.65rem;font-weight:700;font-family:'Syne',sans-serif;white-space:nowrap;">
+          ${isBlocked?'✅ Activar':'🚫 Bloquear'}
+        </button>
+      </div>
+      <div class="cc-meta">
+        <div class="cc-meta-item">
+          <div class="ml">Drive Folder</div>
+          <div class="mv">${c.folder.substring(0,16)}...</div>
+        </div>
+        <div class="cc-meta-item">
+          <div class="ml">Intervalo</div>
+          <div class="mv">Cada ${c.intervalo} min</div>
+        </div>
+      </div>
+      <!-- Sessions indicator -->
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:9px;margin-bottom:10px;">
+        <span style="font-size:.6rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;flex:1;">Dispositivos conectados</span>
+        <span id="sessions-${c.id}" style="font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);">⚫ Sin conexiones</span>
+      </div>
+      <div class="cc-link" onclick="copyClientLink('${c.id}')" title="Clic para copiar">
+        ${c.shortUrl ? `<span style="color:var(--green);font-weight:700;">${c.shortUrl}</span>` : generateLink(c)}
+      </div>
+      <div class="cc-actions">
+        <button class="ca-btn copy" onclick="copyClientLink('${c.id}')">📋 Copiar</button>
+        <button class="ca-btn wa" onclick="shareWA('${c.id}')">💬 WA</button>
+        <button class="ca-btn qr" onclick="showQR('${c.id}')">📷 QR</button>
+        <button class="ca-btn edit" onclick="openEditModal('${c.id}')">✏️</button>
+        <button class="ca-btn del" onclick="deleteClient('${c.id}')">🗑️</button>
+      </div>
+      ${!c.shortUrl ? `<button onclick="generateShortForClient('${c.id}')" style="width:100%;margin-top:7px;padding:7px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:.68rem;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;">🔗 Generar link corto</button>` : ''}
+      <div style="margin-top:9px;">
+        <button class="ca-btn ctrl" onclick="goCtrl('${c.id}')" style="width:100%;padding:9px;">🎛️ Control remoto</button>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+// ═══ CLIENT CRUD ═══
+window.openAddModal = () => {
+  editingId=null;
+  document.getElementById('modalTitle').textContent='➕ Nuevo cliente';
+  document.getElementById('saveClientBtn').textContent='💾 Guardar y generar link';
+  ['fName','fFolder','fRadio','fMusicFolder'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fPin').value='1234';
+  document.getElementById('fInt').value='10';
+  document.getElementById('fFade').value='2';
+  document.getElementById('fEmoji').value='🏪';
+  document.getElementById('clientModal').classList.add('show');
+};
+
+window.openEditModal = id => {
+  const c = clients[id]; if(!c)return;
+  editingId=id;
+  document.getElementById('modalTitle').textContent='✏️ Editar: '+c.name;
+  document.getElementById('saveClientBtn').textContent='💾 Actualizar cliente';
+  document.getElementById('fName').value=c.name;
+  document.getElementById('fFolder').value=c.folder;
+  document.getElementById('fRadio').value=c.radio||'';
+  document.getElementById('fMusicFolder').value=c.musicfolder||'';
+  document.getElementById('fPin').value=c.pin;
+  document.getElementById('fInt').value=c.intervalo;
+  document.getElementById('fFade').value=c.fade||'2';
+  document.getElementById('fEmoji').value=c.emoji||'🏪';
+  document.getElementById('clientModal').classList.add('show');
+};
+
+window.closeModal = () => document.getElementById('clientModal').classList.remove('show');
+
+window.saveClient = async () => {
+  const name=document.getElementById('fName').value.trim();
+  const folder=document.getElementById('fFolder').value.trim();
+  const radio=document.getElementById('fRadio').value.trim();
+  const musicfolder=document.getElementById('fMusicFolder').value.trim();
+  const pin=document.getElementById('fPin').value.trim()||'1234';
+  const intervalo=document.getElementById('fInt').value;
+  const fade=document.getElementById('fFade').value;
+  const emoji=document.getElementById('fEmoji').value||'🏪';
+  if(!name){toast('El nombre es requerido','error');return;}
+  if(!folder){toast('El Folder ID es requerido','error');return;}
+  if(!/^\d{4}$/.test(pin)){toast('El PIN debe ser 4 dígitos','error');return;}
+  const match=folder.match(/folders\/([a-zA-Z0-9_-]+)/);
+  const cleanFolder=match?match[1]:folder;
+  const mfMatch=musicfolder.match(/folders\/([a-zA-Z0-9_-]+)/);
+  const cleanMusicFolder=mfMatch?mfMatch[1]:musicfolder;
+  try {
+    if(editingId) {
+      await fbUpdate('clients/'+editingId, {name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji});
+      toast('✅ '+name+' actualizado','success');
+    } else {
+      const id = 'c_'+Date.now();
+      const code = generateCode();
+      await fbSet('clients/'+id, {id,name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji,code,blocked:false,createdAt:Date.now()});
+      toast('✅ '+name+' creado — generando link corto...','success');
+      // Auto-generate short URL
+      setTimeout(async () => {
+        const short = await getShortUrl(id);
+        toast('🔗 Link corto listo: '+short,'success');
+      }, 500);
+    }
+    closeModal();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+};
+
+window.deleteClient = async id => {
+  const c = clients[id];
+  if(!confirm('¿Eliminar a '+c?.name+'?\n\nSu link dejará de funcionar inmediatamente.'))return;
+  try {
+    await fbRemove('clients/'+id);
+    // Also remove sessions for this client
+    const sessions = await fbGet('sessions');
+    if(sessions) {
+      for(const [sid, s] of Object.entries(sessions)) {
+        if(s.clientId === id) await fbRemove('sessions/'+sid);
+      }
+    }
+    toast('Cliente eliminado — link desactivado','success');
+    renderOverview();
+    renderAllClients();
+  } catch(e){ toast('Error: '+e.message,'error'); }
+};
+
+window.toggleBlock = async id => {
+  const c = clients[id]; if(!c)return;
+  const newBlocked = !c.blocked;
+  await fbUpdate('clients/'+id, {blocked: newBlocked});
+  toast(newBlocked ? '🚫 Cliente bloqueado' : '✅ Cliente activado', newBlocked?'error':'success');
+};
+
+window.setRP = url => { document.getElementById('fRadio').value=url; document.querySelectorAll('.rp').forEach(b=>b.classList.remove('on')); };
+
+// ═══ URL SHORTENER ═══
+// Cache short URLs so we don't request the same one twice
+const shortUrlCache = {};
+
+async function getShortUrl(id) {
+  if(shortUrlCache[id]) return shortUrlCache[id];
+  const c = clients[id]; if(!c) return generateLink(c);
+  const long = generateLink(c);
+  try {
+    const r = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(long)}`);
+    const data = await r.json();
+    if(data.shorturl) {
+      shortUrlCache[id] = data.shorturl;
+      // Save to Firebase for persistence
+      await fbUpdate('clients/'+id, { shortUrl: data.shorturl });
+      return data.shorturl;
+    }
+  } catch(e) { /* fallback to long URL */ }
+  return long;
+}
+
+// ═══ SHARE ═══
+window.copyClientLink = async id => {
+  const c=clients[id]; if(!c)return;
+  if(c.blocked){toast('Cliente bloqueado — actívalo primero','error');return;}
+  toast('🔗 Acortando link...','');
+  const link = c.shortUrl || await getShortUrl(id);
+  navigator.clipboard.writeText(link).then(()=>toast('📋 Link corto copiado: '+c.name,'success')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=link;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    toast('📋 Link copiado!','success');
+  });
+};
+
+window.shareWA = async id => {
+  const c=clients[id]; if(!c)return;
+  if(c.blocked){toast('Cliente bloqueado','error');return;}
+  toast('🔗 Preparando link...','');
+  const link = c.shortUrl || await getShortUrl(id);
+  const msg=encodeURIComponent(`🎵 *RadioBiz Pro* — Tu reproductor está listo!\n\n*Negocio:* ${c.name} ${c.emoji}\n\n👆 Abre este link en la pantalla de tu negocio:\n${link}\n\n📌 PIN de acceso: *${c.pin}*\n\n_Powered by RadioBiz Pro_`);
+  window.open('https://wa.me/?text='+msg,'_blank');
+};
+
+window.showQR = async id => {
+  const c=clients[id]; if(!c)return;
+  if(c.blocked){toast('Cliente bloqueado','error');return;}
+  toast('🔗 Generando QR...','');
+  const link = c.shortUrl || await getShortUrl(id);
+  qrCurrentLink=link;
+  document.getElementById('qrName').textContent=c.emoji+' '+c.name;
+  document.getElementById('qrUrl').textContent=link;
+  document.getElementById('qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(link);
+  document.getElementById('qrModal').classList.add('show');
+};
+window.closeQR = () => document.getElementById('qrModal').classList.remove('show');
+window.copyQRLink = () => { navigator.clipboard.writeText(qrCurrentLink).then(()=>toast('📋 Copiado','success')); closeQR(); };
+
+// ═══ CONTROL REMOTE ═══
+window.generateShortForClient = async id => {
+  const c = clients[id]; if(!c) return;
+  toast('🔗 Generando link corto...','');
+  delete shortUrlCache[id];
+  delete c.shortUrl;
+  const short = await getShortUrl(id);
+  toast('✅ Link corto generado','success');
+  renderOverview();
+  if(document.getElementById('page-clients').classList.contains('active')) renderAllClients();
+};
+
+window.goCtrl = id => { ctrlClientId=id; goPage('control'); };
+
+function renderCtrlTabs() {
+  const el=document.getElementById('ctrlClientTabs');
+  const list=Object.values(clients);
+  if(!list.length){el.innerHTML='<div style="font-size:.76rem;color:var(--muted);font-family:\'JetBrains Mono\',monospace;">Sin clientes.</div>';return;}
+  el.innerHTML=list.map(c=>`
+    <div onclick="selectCtrlClient('${c.id}')"
+      style="padding:8px 16px;border-radius:10px;background:${c.id===ctrlClientId?'var(--accent)22':'var(--s2)'};border:1px solid ${c.id===ctrlClientId?'var(--accent)55':'var(--border2)'};color:${c.id===ctrlClientId?'var(--accent)':'var(--muted)'};font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;">
+      ${c.emoji} ${c.name} ${c.blocked?'🚫':''}
+    </div>`).join('');
+  if(ctrlClientId) {
+    const c=clients[ctrlClientId];
+    if(c){
+      document.getElementById('ctrlName').textContent=c.emoji+' '+c.name;
+      document.getElementById('ctrlSub').textContent='PIN: '+c.pin+' · Intervalo: '+c.intervalo+' min';
+    }
+  }
+}
+
+window.selectCtrlClient = id => { ctrlClientId=id; renderCtrlTabs(); };
+
+async function sendCmd(action, value) {
+  if(!ctrlClientId){toast('Selecciona un cliente primero','error');return;}
+  await fbSet('commands/'+ctrlClientId, {action,value,ts:Date.now()});
+  toast('Comando enviado ✓','success');
+  log('🎛️ '+action+' → '+clients[ctrlClientId]?.name,'ok');
+}
+
+window.cmdPlayPause = () => { isPlaying=!isPlaying; sendCmd('play_pause',isPlaying); const b=document.getElementById('pbigBtn'); if(isPlaying){b.textContent='⏸ Pausar';b.className='pbig playing';}else{b.textContent='▶ Reproducir';b.className='pbig';} };
+window.cmdForceAd = () => sendCmd('force_ad',true);
+window.cmdSyncDrive = () => sendCmd('sync_drive',true);
+window.cmdLock = () => sendCmd('lock',true);
+window.cmdSetInterval = () => sendCmd('set_interval',parseInt(document.getElementById('ctrlInt').value));
+window.cmdSetVolume = () => sendCmd('set_volume',parseInt(document.getElementById('ctrlVol').value));
+
+// ═══ PAGOS ═══
+let codiClientId = null;
+let pagoManualClientId = null;
+let montoClientId = null;
+
+// CoDi QR base64 — imagen del QR de tu CoDi
+const CODI_QR_URL = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=CODI_BANORTE_EDUARDO_PEREZ';
+
+function renderPagos() {
+  const list = Object.values(clients);
+  const el = document.getElementById('pagosList');
+  el.innerHTML = '';
+  let pagados=0, pendientes=0, vencidos=0, totalMes=0;
+
+  if(!list.length) {
+    el.innerHTML='<div style="text-align:center;color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:.76rem;padding:32px;">Sin clientes registrados</div>';
+    return;
+  }
+
+  list.forEach(c => {
+    const monto = c.monto || 499;
+    const pagos = c.pagos || [];
+    const ultimoPago = pagos.length ? pagos[pagos.length-1] : null;
+    const hoy = new Date();
+    let estado = 'pendiente';
+    let diasDesde = null;
+
+    if(ultimoPago) {
+      const fechaPago = new Date(ultimoPago.fecha);
+      diasDesde = Math.floor((hoy - fechaPago) / (1000*60*60*24));
+      if(diasDesde <= 35) estado = 'pagado';
+      else if(diasDesde <= 45) estado = 'pendiente';
+      else estado = 'vencido';
+    }
+
+    if(estado==='pagado') pagados++;
+    else if(estado==='pendiente') pendientes++;
+    else vencidos++;
+    totalMes += monto;
+
+    const estadoConfig = {
+      pagado: { color:'var(--green)', bg:'var(--green)15', border:'var(--green)35', icon:'✅', txt:'Al corriente' },
+      pendiente: { color:'var(--warn)', bg:'var(--warn)15', border:'var(--warn)35', icon:'⏳', txt:'Pendiente' },
+      vencido: { color:'var(--red)', bg:'var(--red)12', border:'var(--red)30', icon:'🚫', txt:'Vencido' }
+    }[estado];
+
+    const div = document.createElement('div');
+    div.style.cssText = `background:var(--card-bg);border:1px solid var(--border2);border-radius:16px;padding:18px;`;
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+        <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--accent)22,var(--accent2)22);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">${c.emoji||'🏪'}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.92rem;font-weight:800;">${c.name}</div>
+          <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;">${c.plan||'Estándar'} · $${monto}/mes</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;background:${estadoConfig.bg};border:1px solid ${estadoConfig.border};">
+          <span style="font-size:.75rem;">${estadoConfig.icon}</span>
+          <span style="font-size:.68rem;font-weight:700;color:${estadoConfig.color};font-family:'JetBrains Mono',monospace;">${estadoConfig.txt}</span>
+        </div>
+      </div>
+      <!-- Último pago -->
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;">
+          <div style="font-size:.58rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Último pago</div>
+          <div style="font-size:.78rem;font-weight:700;font-family:'JetBrains Mono',monospace;">${ultimoPago ? `$${ultimoPago.monto} · ${new Date(ultimoPago.fecha).toLocaleDateString('es-MX')} · ${ultimoPago.metodo}` : 'Sin pagos registrados'}</div>
+        </div>
+        ${diasDesde !== null ? `<div style="font-size:.65rem;font-family:'JetBrains Mono',monospace;color:${diasDesde>35?'var(--warn)':'var(--muted)'};">hace ${diasDesde}d</div>` : ''}
+      </div>
+      <!-- Historial -->
+      ${pagos.length > 0 ? `
+      <div style="margin-bottom:12px;">
+        <div style="font-size:.58rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;">Historial reciente</div>
+        <div style="display:flex;flex-direction:column;gap:4px;max-height:100px;overflow-y:auto;">
+          ${[...pagos].reverse().slice(0,5).map(p=>`
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--s2);border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:.66rem;">
+              <span style="color:var(--green);">✓</span>
+              <span style="flex:1;">$${p.monto}</span>
+              <span style="color:var(--muted);">${new Date(p.fecha).toLocaleDateString('es-MX')}</span>
+              <span style="color:var(--muted2);">${p.metodo}</span>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+      <!-- Acciones -->
+      <div style="display:flex;gap:7px;flex-wrap:wrap;">
+        <button onclick="openCodiModal('${c.id}')" style="flex:1;padding:9px;border-radius:9px;background:linear-gradient(135deg,#00b386,#00875a);color:#fff;border:none;font-family:'Syne',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;">📱 Cobrar con CoDi</button>
+        <button onclick="openPagoManual('${c.id}')" style="flex:1;padding:9px;border-radius:9px;background:var(--accent)22;color:var(--accent);border:1px solid var(--accent)40;font-family:'Syne',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;">💵 Pago manual</button>
+        <button onclick="openMontoModal('${c.id}')" style="padding:9px 12px;border-radius:9px;background:var(--s2);color:var(--muted);border:1px solid var(--border2);font-family:'Syne',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;">⚙️</button>
+      </div>`;
+    el.appendChild(div);
+  });
+
+  document.getElementById('pagCount').textContent = pagados;
+  document.getElementById('pendCount').textContent = pendientes;
+  document.getElementById('vencCount').textContent = vencidos;
+  document.getElementById('totalMensual').textContent = '$'+totalMes.toLocaleString();
+
+  // Badge de alerta en sidebar
+  const badge = document.getElementById('pagosBadge');
+  if(pendientes+vencidos > 0) { badge.style.display='inline'; badge.textContent=pendientes+vencidos; }
+  else badge.style.display='none';
+}
+
+// CoDi
+window.openCodiModal = id => {
+  const c = clients[id]; if(!c) return;
+  codiClientId = id;
+  document.getElementById('codiClientName').textContent = c.emoji+' '+c.name;
+  document.getElementById('codiMonto').textContent = '$'+(c.monto||499);
+  document.getElementById('codiConcepto').textContent = 'RadioBiz · '+c.name;
+  // Generate QR with client info embedded
+  const qrData = `CoDi|Banorte|JOSE EDUARDO PEREZ FLORES|RadioBiz ${c.name}|${c.monto||499}`;
+  document.getElementById('codiQRImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=000000&bgcolor=ffffff&data=${encodeURIComponent(qrData)}`;
+  document.getElementById('codiModal').classList.add('show');
+};
+window.closeCodiModal = () => document.getElementById('codiModal').classList.remove('show');
+window.confirmarPagoCoDi = async () => {
+  if(!codiClientId) return;
+  const c = clients[codiClientId];
+  const pago = { fecha: new Date().toISOString(), monto: c.monto||499, metodo: 'CoDi', notas: '' };
+  const pagos = c.pagos || [];
+  pagos.push(pago);
+  await fbUpdate('clients/'+codiClientId, { pagos });
+  toast('✅ Pago CoDi registrado: '+c.name,'success');
+  closeCodiModal();
+  renderPagos();
+};
+
+// Pago manual
+window.openPagoManual = id => {
+  const c = clients[id]; if(!c) return;
+  pagoManualClientId = id;
+  document.getElementById('pmClientName').value = c.name;
+  document.getElementById('pmMonto').value = c.monto||499;
+  document.getElementById('pmFecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('pagoManualModal').classList.add('show');
+};
+window.closePagoManual = () => document.getElementById('pagoManualModal').classList.remove('show');
+window.guardarPagoManual = async () => {
+  const monto = parseFloat(document.getElementById('pmMonto').value);
+  const fecha = document.getElementById('pmFecha').value;
+  const metodo = document.getElementById('pmMetodo').value;
+  const notas = document.getElementById('pmNotas').value;
+  if(!monto||!fecha){toast('Llena todos los campos','error');return;}
+  const c = clients[pagoManualClientId];
+  const pagos = c.pagos || [];
+  pagos.push({ fecha: new Date(fecha).toISOString(), monto, metodo, notas });
+  await fbUpdate('clients/'+pagoManualClientId, { pagos });
+  toast('✅ Pago registrado: '+c.name,'success');
+  closePagoManual();
+  renderPagos();
+};
+
+// Monto/Plan
+window.openMontoModal = id => {
+  const c = clients[id]; if(!c) return;
+  montoClientId = id;
+  document.getElementById('mmClientName').value = c.name;
+  document.getElementById('mmMonto').value = c.monto||499;
+  document.getElementById('mmPlan').value = c.plan||'Estándar';
+  document.getElementById('montoModal').classList.add('show');
+};
+window.closeMontoModal = () => document.getElementById('montoModal').classList.remove('show');
+window.guardarMonto = async () => {
+  const monto = parseFloat(document.getElementById('mmMonto').value);
+  const plan = document.getElementById('mmPlan').value;
+  if(!monto){toast('Ingresa un monto','error');return;}
+  await fbUpdate('clients/'+montoClientId, { monto, plan });
+  toast('✅ Mensualidad actualizada','success');
+  closeMontoModal();
+  renderPagos();
+};
+
+// ═══ SETTINGS ═══
+window.saveBaseUrl = () => {
+  const url=document.getElementById('baseUrlInput').value.trim();
+  if(!url){toast('Ingresa la URL','error');return;}
+  BASE_URL=url; localStorage.setItem('rbz_base_url',url);
+  toast('✅ URL guardada','success');
+};
+window.clearAllData = async () => {
+  if(!confirm('¿Eliminar TODOS los clientes? No se puede deshacer.'))return;
+  await fbRemove('clients');
+  toast('Todos los clientes eliminados');
+};
+
+// ═══ LOG ═══
+function log(msg,type){
+  const el=document.getElementById('ctrlLog');
+  const now=new Date();
+  const ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+  const d=document.createElement('div');
+  d.className='le'+(type?' '+type:'');
+  d.innerHTML=`<span class="ts">${ts}</span>${msg}`;
+  el.insertBefore(d,el.firstChild);
+}
+
+// ═══ TOAST ═══
+let toastTimer=null;
+window.toast = (msg,type='') => {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast'+(type?' '+type:'');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+};
+function toast(msg,type){window.toast(msg,type);}
+
+</script>
+<style>
+[data-theme="dark"]{
+  --bg:#07070c;--s1:#0e0e16;--s2:#151520;--s3:#1c1c2b;--s4:#232336;
+  --border:#ffffff08;--border2:#ffffff12;--border3:#ffffff20;
+  --accent:#a78bfa;--accent2:#f0c040;--green:#34d399;--warn:#f97316;
+  --info:#38bdf8;--red:#f43f5e;--text:#f0f0fa;--text2:#9090b8;
+  --muted:#4a4a6a;--muted2:#2e2e48;
+  --shadow:0 8px 32px #00000066;--card-bg:linear-gradient(135deg,#0e0e18,#13131e);
+}
+[data-theme="light"]{
+  --bg:#f4f4fb;--s1:#ffffff;--s2:#ebebf5;--s3:#dcdcec;--s4:#cecede;
+  --border:#00000008;--border2:#00000014;--border3:#00000022;
+  --accent:#7c3aed;--accent2:#d97706;--green:#059669;--warn:#ea580c;
+  --info:#0284c7;--red:#e11d48;--text:#0f0f1e;--text2:#40406080;
+  --muted:#8080a8;--muted2:#c0c0d8;
+  --shadow:0 8px 32px #00000018;--card-bg:linear-gradient(135deg,#ffffff,#f8f8ff);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{height:100%;scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;transition:background .3s,color .3s;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 50% 35% at 0% 0%,var(--accent)0d,transparent 60%),radial-gradient(ellipse 40% 30% at 100% 100%,var(--accent2)08,transparent 60%);}
+
+/* PIN */
+#pinScreen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:24px;}
+.pin-hero{text-align:center;}
+.pin-hero .mark{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto 12px;box-shadow:0 0 36px var(--accent)44;animation:float 3s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.pin-hero h1{font-size:1.8rem;font-weight:800;letter-spacing:-1px;}
+.pin-hero h1 em{color:var(--accent2);font-style:normal;}
+.pin-hero p{font-size:.74rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:4px;}
+.pin-card{background:var(--s1);border:1px solid var(--border2);border-radius:26px;padding:32px 28px;width:min(360px,94vw);box-shadow:var(--shadow);}
+.pin-card h2{font-size:1rem;font-weight:700;text-align:center;margin-bottom:4px;}
+.pin-card>p{font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;margin-bottom:24px;}
+.pin-dots{display:flex;justify-content:center;gap:13px;margin-bottom:24px;}
+.pin-dot{width:14px;height:14px;border-radius:50%;background:var(--s3);border:2px solid var(--border2);transition:all .2s;}
+.pin-dot.on{background:var(--accent);border-color:var(--accent);box-shadow:0 0 12px var(--accent)55;}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.pk{background:var(--s2);border:1px solid var(--border2);border-radius:13px;padding:16px 8px;font-size:1.2rem;font-weight:700;cursor:pointer;color:var(--text);text-align:center;transition:all .15s;font-family:'Syne',sans-serif;}
+.pk:hover{background:var(--s3);}
+.pk:active{transform:scale(.88);}
+.pk.go{background:linear-gradient(135deg,var(--accent),#7c3aed);color:#fff;border-color:var(--accent);}
+.pin-err{font-size:.7rem;font-weight:600;color:var(--red);font-family:'JetBrains Mono',monospace;text-align:center;min-height:14px;margin-top:10px;}
+.pin-hint{font-size:.62rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;text-align:center;margin-top:12px;}
+.theme-btn{background:var(--s2);border:1px solid var(--border2);border-radius:99px;padding:7px 15px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:600;color:var(--text2);transition:all .2s;}
+
+/* APP */
+#app{display:none;min-height:100vh;}
+.shell{display:flex;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{width:230px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border2);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;transition:background .3s;}
+.sb-brand{padding:20px 18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.sb-mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:.95rem;box-shadow:0 0 14px var(--accent)33;}
+.sb-title{font-size:.92rem;font-weight:800;letter-spacing:-.3px;}
+.sb-title em{color:var(--accent2);font-style:normal;}
+.sb-ver{font-size:.5rem;background:var(--accent)20;color:var(--accent);border:1px solid var(--accent)30;border-radius:99px;padding:1px 6px;font-family:'JetBrains Mono',monospace;font-weight:600;margin-left:3px;}
+.sb-nav{flex:1;padding:13px 11px;display:flex;flex-direction:column;gap:3px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:.8rem;font-weight:700;color:var(--muted);cursor:pointer;transition:all .2s;border:1px solid transparent;}
+.nav-item:hover{background:var(--s2);color:var(--text);}
+.nav-item.active{background:var(--accent)18;border-color:var(--accent)30;color:var(--accent);}
+.nav-item .ni{font-size:.95rem;width:20px;text-align:center;}
+.nav-sep{height:1px;background:var(--border);margin:7px 0;}
+.nav-badge{margin-left:auto;font-size:.53rem;font-weight:700;background:var(--accent);color:#fff;border-radius:99px;padding:2px 7px;font-family:'JetBrains Mono',monospace;}
+.sb-bottom{padding:13px 11px;border-top:1px solid var(--border);}
+.sb-status{padding:8px 12px;font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--green);display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.sb-status .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.theme-toggle{display:flex;align-items:center;gap:7px;padding:9px 12px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;cursor:pointer;transition:all .2s;width:100%;font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:600;color:var(--muted);}
+.theme-toggle:hover{color:var(--text);}
+.lock-btn{display:flex;align-items:center;gap:7px;padding:9px 12px;background:var(--red)12;border:1px solid var(--red)25;border-radius:10px;cursor:pointer;transition:all .2s;width:100%;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:600;color:var(--red);}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:26px 30px;}
+.content::-webkit-scrollbar{width:5px;}
+.content::-webkit-scrollbar-thumb{background:var(--s3);border-radius:4px;}
+.page{display:none;animation:pageIn .3s ease;}
+.page.active{display:block;}
+@keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* PAGE HEADER */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+.page-header h1{font-size:1.5rem;font-weight:800;letter-spacing:-.5px;}
+.page-header p{font-size:.75rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:3px;}
+
+/* OVERVIEW STATS */
+.overview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:22px;}
+.ov-card{background:var(--card-bg);border:1px solid var(--border2);border-radius:17px;padding:17px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform .2s;}
+.ov-card:hover{transform:translateY(-2px);}
+.ov-card::before{content:'';position:absolute;top:-20px;right:-20px;width:70px;height:70px;border-radius:50%;opacity:.08;}
+.ov-card.c1::before{background:var(--accent);}
+.ov-card.c2::before{background:var(--green);}
+.ov-card.c3::before{background:var(--accent2);}
+.ov-card.c4::before{background:var(--info);}
+.ov-icon{font-size:1.5rem;margin-bottom:9px;}
+.ov-val{font-size:1.7rem;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:3px;}
+.ov-card.c1 .ov-val{color:var(--accent);}
+.ov-card.c2 .ov-val{color:var(--green);}
+.ov-card.c3 .ov-val{color:var(--accent2);}
+.ov-card.c4 .ov-val{color:var(--info);}
+.ov-lbl{font-size:.62rem;font-weight:700;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;}
+
+/* CLIENT CARDS */
+.clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:15px;}
+.client-card{background:var(--card-bg);border:1px solid var(--border2);border-radius:19px;padding:19px;box-shadow:var(--shadow);transition:transform .2s,border-color .3s;}
+.client-card:hover{transform:translateY(-2px);}
+.client-card.blocked{border-color:var(--red)40;opacity:.85;}
+.cc-header{display:flex;align-items:flex-start;gap:11px;margin-bottom:13px;}
+.cc-avatar{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--accent)22,var(--accent2)22);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0;}
+.cc-name{font-size:.92rem;font-weight:800;margin-bottom:2px;}
+.cc-sub{font-size:.63rem;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.cc-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.cc-meta-item{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:7px 9px;}
+.cc-meta-item .ml{font-size:.54rem;font-weight:700;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;}
+.cc-meta-item .mv{font-size:.72rem;font-weight:700;font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cc-link{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--accent2);word-break:break-all;line-height:1.6;margin-bottom:11px;cursor:pointer;max-height:52px;overflow:hidden;}
+.cc-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.ca-btn{flex:1;padding:8px 8px;border-radius:8px;border:none;font-family:'Syne',sans-serif;font-size:.68rem;font-weight:700;cursor:pointer;transition:all .2s;text-align:center;min-width:0;}
+.ca-btn:active{transform:scale(.94);}
+.ca-btn.copy{background:var(--accent);color:#fff;}
+.ca-btn.wa{background:#25d366;color:#fff;}
+.ca-btn.qr{background:var(--s3);color:var(--text);border:1px solid var(--border2);}
+.ca-btn.edit{background:var(--s3);color:var(--text);border:1px solid var(--border2);}
+.ca-btn.del{background:var(--red)18;color:var(--red);border:1px solid var(--red)30;}
+.ca-btn.ctrl{background:var(--info)18;color:var(--info);border:1px solid var(--info)30;flex:2;}
+
+/* ADD CARD */
+.add-card{background:var(--s1);border:2px dashed var(--border2);border-radius:19px;padding:30px 18px;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-height:200px;}
+.add-card:hover{border-color:var(--accent)55;background:var(--accent)05;}
+.add-card .ai{font-size:1.8rem;}
+.add-card h3{font-size:.85rem;font-weight:700;color:var(--muted);}
+.add-card p{font-size:.68rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:#000000aa;backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.show{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--border2);border-radius:22px;padding:26px;width:100%;max-width:520px;box-shadow:var(--shadow);animation:modalIn .3s cubic-bezier(.34,1.56,.64,1);max-height:90vh;overflow-y:auto;}
+@keyframes modalIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.modal-header h2{font-size:1.05rem;font-weight:800;}
+.modal-close{background:var(--s2);border:1px solid var(--border2);border-radius:8px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:var(--muted);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:15px;}
+.form-full{grid-column:span 2;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.fg label{font-size:.58rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.fg input,.fg select,.fg textarea{background:var(--s2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:600;padding:9px 11px;outline:none;transition:border-color .2s;appearance:none;resize:none;}
+.fg input:focus,.fg select:focus{border-color:var(--accent)80;}
+.radio-presets{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+.rp{background:var(--s3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:.62rem;font-weight:700;font-family:'JetBrains Mono',monospace;padding:4px 9px;cursor:pointer;transition:all .2s;}
+.rp:hover{color:var(--text);}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;}
+.btn{padding:10px 18px;border-radius:9px;border:none;font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn.primary{background:linear-gradient(135deg,var(--accent),#7c3aed);color:#fff;}
+.btn.secondary{background:var(--s2);border:1px solid var(--border2);color:var(--text);}
+
+/* CONTROL PANEL */
+.ctrl-panel{background:var(--card-bg);border:1px solid var(--border2);border-radius:17px;padding:19px;margin-bottom:15px;box-shadow:var(--shadow);}
+.ctrl-client-name{font-size:.95rem;font-weight:800;margin-bottom:3px;}
+.ctrl-client-sub{font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:15px;}
+.ctrl-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:13px;}
+.ctrl-btn{background:var(--s2);border:1px solid var(--border2);border-radius:11px;padding:13px 10px;text-align:center;cursor:pointer;transition:all .2s;}
+.ctrl-btn:active{transform:scale(.93);}
+.ctrl-btn .cbi{font-size:1.3rem;margin-bottom:5px;}
+.ctrl-btn h4{font-size:.66rem;font-weight:700;}
+.ctrl-btn.play-c{background:var(--green)18;border-color:var(--green)40;}
+.ctrl-btn.play-c h4{color:var(--green);}
+.ctrl-btn.ad-c{background:var(--warn)18;border-color:var(--warn)40;}
+.ctrl-btn.ad-c h4{color:var(--warn);}
+.ctrl-btn.sync-c{background:var(--accent2)15;border-color:var(--accent2)40;}
+.ctrl-btn.sync-c h4{color:var(--accent2);}
+.ctrl-btn.lock-c{background:var(--red)12;border-color:var(--red)30;}
+.ctrl-btn.lock-c h4{color:var(--red);}
+.ctrl-sliders{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.ctrl-slider-item label{font-size:.58rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between;margin-bottom:5px;}
+.ctrl-slider-item label span{color:var(--accent2);}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
+.pbig{width:100%;padding:15px;border-radius:12px;border:1px solid var(--border2);background:var(--s1);font-family:'Syne',sans-serif;font-size:.88rem;font-weight:800;cursor:pointer;transition:all .2s;color:var(--text);margin-bottom:10px;}
+.pbig.playing{background:var(--green)18;border-color:var(--green)40;color:var(--green);}
+
+/* SETTINGS */
+.settings-section{background:var(--card-bg);border:1px solid var(--border2);border-radius:16px;padding:18px;margin-bottom:14px;}
+
+/* QR MODAL */
+.qr-content{text-align:center;}
+.qr-content h3{font-size:.95rem;font-weight:800;margin-bottom:4px;}
+.qr-content p{font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:14px;}
+#qrImg{width:200px;height:200px;border-radius:12px;border:1px solid var(--border2);display:block;margin:0 auto 12px;}
+.qr-url{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:9px;margin-bottom:13px;font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--accent2);word-break:break-all;line-height:1.7;}
+
+/* LOG */
+.log-wrap{background:var(--card-bg);border:1px solid var(--border2);border-radius:13px;padding:15px;}
+.log{max-height:130px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted);line-height:1.9;}
+.log::-webkit-scrollbar{width:3px;}
+.log::-webkit-scrollbar-thumb{background:var(--s3);}
+.le{border-bottom:1px solid var(--border);padding:1px 0;}
+.le.ok{color:var(--green);}
+.le.info{color:var(--info);}
+.le.warn{color:var(--warn);}
+.ts{color:var(--muted2);margin-right:7px;}
+
+/* SL */
+.sl{font-family:'JetBrains Mono',monospace;font-size:.58rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:11px;display:flex;align-items:center;gap:8px;}
+.sl::after{content:'';flex:1;height:1px;background:var(--border2);}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--s1);border:1px solid var(--border2);border-radius:13px;padding:11px 18px;font-size:.76rem;font-weight:600;color:var(--text);z-index:9999;box-shadow:var(--shadow);transform:translateY(80px);opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);font-family:'JetBrains Mono',monospace;max-width:280px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-color:var(--green)40;color:var(--green);}
+.toast.error{border-color:var(--red)40;color:var(--red);}
+
+/* FIREBASE STATUS */
+.fb-status{display:flex;align-items:center;gap:6px;font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--green);}
+.fb-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
+
+@media(max-width:900px){.overview-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:700px){
+  .sidebar{display:none;}
+  .content{padding:16px;}
+  .overview-grid{grid-template-columns:repeat(2,1fr);}
+  .ctrl-grid{grid-template-columns:repeat(2,1fr);}
+  .ctrl-sliders{grid-template-columns:1fr;}
+  .form-grid{grid-template-columns:1fr;}
+  .form-full{grid-column:span 1;}
+}
+</style>
+</head>
+<body>
+
+<!-- PIN -->
+<div id="pinScreen">
+  <div class="pin-hero">
+    <div class="mark">📻</div>
+    <h1>Radio<em>Biz</em></h1>
+    <p>Dashboard de administración</p>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()"><span id="pTI">☀️</span><span id="pTT">Modo claro</span></button>
+  <div class="pin-card">
+    <h2>Acceso al dashboard</h2>
+    <p>PIN maestro de 4 dígitos</p>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-grid">
+      <button class="pk" onclick="pk('1')">1</button><button class="pk" onclick="pk('2')">2</button><button class="pk" onclick="pk('3')">3</button>
+      <button class="pk" onclick="pk('4')">4</button><button class="pk" onclick="pk('5')">5</button><button class="pk" onclick="pk('6')">6</button>
+      <button class="pk" onclick="pk('7')">7</button><button class="pk" onclick="pk('8')">8</button><button class="pk" onclick="pk('9')">9</button>
+      <button class="pk" onclick="pb()">⌫</button><button class="pk" onclick="pk('0')">0</button><button class="pk go" onclick="ps()">✓</button>
+    </div>
+    <div class="pin-err" id="pinErr"></div>
+    <p class="pin-hint">PIN por defecto: 1234</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+<div class="shell">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-mark">📻</div>
+      <div>
+        <div class="sb-title">Radio<em>Biz</em><span class="sb-ver">Pro</span></div>
+        <div style="font-size:.55rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:1px;">Firebase Edition</div>
+      </div>
+    </div>
+    <div class="sb-nav">
+      <div class="nav-item active" onclick="goPage('overview')" id="nav-overview"><span class="ni">🏠</span>Inicio</div>
+      <div class="nav-item" onclick="goPage('clients')" id="nav-clients"><span class="ni">🏢</span>Clientes<span class="nav-badge" id="clientsBadge">0</span></div>
+      <div class="nav-item" onclick="goPage('pagos')" id="nav-pagos"><span class="ni">💰</span>Pagos<span class="nav-badge" id="pagosBadge" style="background:var(--warn);display:none;">!</span></div>
+      <div class="nav-item" onclick="goPage('control')" id="nav-control"><span class="ni">🎛️</span>Control remoto</div>
+      <div class="nav-sep"></div>
+      <div class="nav-item" onclick="goPage('settings')" id="nav-settings"><span class="ni">⚙️</span>Configuración</div>
+    </div>
+    <div class="sb-bottom">
+      <div class="sb-status"><div class="dot"></div>Firebase conectado</div>
+      <button class="theme-toggle" onclick="toggleTheme()"><span id="themeIcon">☀️</span><span id="themeTxt">Modo claro</span></button>
+      <button class="lock-btn" onclick="lockDash()">🔒 Cerrar sesión</button>
+    </div>
+  </nav>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="page-header">
+        <div><h1>Bienvenido 👋</h1><p id="overviewDate">—</p></div>
+        <button class="btn primary" onclick="openAddModal()">+ Nuevo cliente</button>
+      </div>
+      <div class="overview-grid">
+        <div class="ov-card c1"><div class="ov-icon">🏢</div><div class="ov-val" id="ovClients">0</div><div class="ov-lbl">Clientes</div></div>
+        <div class="ov-card c2"><div class="ov-icon">🟢</div><div class="ov-val" id="ovConnected">0</div><div class="ov-lbl">Conectados ahora</div></div>
+        <div class="ov-card c3"><div class="ov-icon">🎙️</div><div class="ov-val" id="ovJingles">0</div><div class="ov-lbl">Jingles activos</div></div>
+        <div class="ov-card c4"><div class="ov-icon">🔗</div><div class="ov-val" id="ovLinks">0</div><div class="ov-lbl">Links generados</div></div>
+      </div>
+      <div class="sl">Clientes recientes</div>
+      <div class="clients-grid" id="overviewClients"></div>
+    </div>
+
+    <!-- CLIENTS -->
+    <div class="page" id="page-clients">
+      <div class="page-header">
+        <div><h1>Clientes</h1><p>Gestiona todos tus negocios</p></div>
+        <button class="btn primary" onclick="openAddModal()">+ Nuevo cliente</button>
+      </div>
+      <div class="clients-grid" id="allClients"></div>
+    </div>
+
+    <!-- CONTROL -->
+    <div class="page" id="page-control">
+      <div class="page-header"><div><h1>Control remoto</h1><p>Controla reproductores en tiempo real</p></div></div>
+      <div class="sl">Selecciona un cliente</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px;" id="ctrlClientTabs"></div>
+      <button class="pbig" id="pbigBtn" onclick="cmdPlayPause()">▶ Reproducir</button>
+      <div class="ctrl-panel">
+        <div class="ctrl-client-name" id="ctrlName">—</div>
+        <div class="ctrl-client-sub" id="ctrlSub">Selecciona un cliente arriba</div>
+        <div class="ctrl-grid">
+          <div class="ctrl-btn play-c" onclick="cmdPlayPause()"><div class="cbi">▶</div><h4>Play/Pause</h4></div>
+          <div class="ctrl-btn ad-c" onclick="cmdForceAd()"><div class="cbi">📢</div><h4>Forzar anuncio</h4></div>
+          <div class="ctrl-btn sync-c" onclick="cmdSyncDrive()"><div class="cbi">☁️</div><h4>Sync Drive</h4></div>
+          <div class="ctrl-btn lock-c" onclick="cmdLock()"><div class="cbi">🔒</div><h4>Bloquear</h4></div>
+        </div>
+        <div class="ctrl-sliders">
+          <div class="ctrl-slider-item">
+            <label>Volumen <span id="volDisp">80%</span></label>
+            <input type="range" id="ctrlVol" min="0" max="100" value="80" oninput="document.getElementById('volDisp').textContent=this.value+'%'">
+            <button class="btn secondary" style="width:100%;margin-top:8px;font-size:.72rem;padding:7px;" onclick="cmdSetVolume()">Aplicar</button>
+          </div>
+          <div class="ctrl-slider-item">
+            <label>Intervalo anuncios</label>
+            <select style="width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.74rem;font-weight:600;padding:8px 10px;outline:none;appearance:none;margin-bottom:8px;" id="ctrlInt">
+              <option value="1">1 min</option><option value="5">5 min</option>
+              <option value="10" selected>10 min</option><option value="15">15 min</option>
+              <option value="20">20 min</option><option value="30">30 min</option>
+            </select>
+            <button class="btn secondary" style="width:100%;font-size:.72rem;padding:7px;" onclick="cmdSetInterval()">Aplicar</button>
+          </div>
+        </div>
+      </div>
+      <div class="sl">Actividad</div>
+      <div class="log-wrap"><div class="log" id="ctrlLog"><div class="le info"><span class="ts">--:--:--</span>Dashboard Firebase listo</div></div></div>
+    </div>
+
+    <!-- PAGOS -->
+    <div class="page" id="page-pagos">
+      <div class="page-header">
+        <div><h1>💰 Pagos</h1><p>Registro de cobros y mensualidades</p></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div style="font-size:.7rem;font-family:'JetBrains Mono',monospace;color:var(--muted);">Total mensual:</div>
+          <div style="font-size:1.1rem;font-weight:800;color:var(--green);font-family:'JetBrains Mono',monospace;" id="totalMensual">$0</div>
+        </div>
+      </div>
+      <!-- Resumen -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:22px;">
+        <div class="ov-card c2"><div class="ov-icon">✅</div><div class="ov-val" id="pagCount">0</div><div class="ov-lbl">Al corriente</div></div>
+        <div class="ov-card c3"><div class="ov-icon">⏳</div><div class="ov-val" id="pendCount">0</div><div class="ov-lbl">Pendientes</div></div>
+        <div class="ov-card" style="--accent:var(--red)"><div class="ov-icon">🚫</div><div class="ov-val" id="vencCount" style="color:var(--red);">0</div><div class="ov-lbl">Vencidos</div></div>
+      </div>
+      <div class="sl">Estado de cuenta por cliente</div>
+      <div style="display:flex;flex-direction:column;gap:12px;" id="pagosList"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-header"><div><h1>Configuración</h1></div></div>
+      <div style="max-width:480px;display:flex;flex-direction:column;gap:13px;">
+        <div class="settings-section">
+          <div class="sl">🔐 Seguridad</div>
+          <div class="fg" style="margin-bottom:11px;"><label>PIN maestro del dashboard</label><input type="password" id="newMasterPin" placeholder="Nuevo PIN de 4 dígitos" maxlength="4"></div>
+          <button class="btn primary" onclick="changeMasterPin()" style="width:100%;">💾 Actualizar PIN</button>
+        </div>
+        <div class="settings-section">
+          <div class="sl">🌐 URL del reproductor</div>
+          <div class="fg" style="margin-bottom:11px;"><label>URL donde está player-pro-v4.html</label><input type="url" id="baseUrlInput" placeholder="https://radiobiz-pro.netlify.app/player-pro-v4.html"></div>
+          <button class="btn primary" onclick="saveBaseUrl()" style="width:100%;">💾 Guardar URL</button>
+        </div>
+        <div class="settings-section">
+          <div class="sl">🔥 Firebase</div>
+          <div class="fb-status"><div class="fb-dot"></div>Conectado a ProRadioBiz</div>
+          <p style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:8px;line-height:1.7;">Los clientes se sincronizan en tiempo real entre todos tus dispositivos automáticamente.</p>
+        </div>
+        <div class="settings-section">
+          <div class="sl">🗑️ Zona de peligro</div>
+          <button class="btn" onclick="clearAllData()" style="width:100%;background:var(--red)18;color:var(--red);border:1px solid var(--red)30;">Eliminar todos los clientes</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-bg" id="clientModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">➕ Nuevo cliente</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="fg form-full"><label>Nombre del negocio *</label><input type="text" id="fName" placeholder="Ej: Farmacia San José"></div>
+      <div class="fg form-full"><label>Folder ID de jingles en Drive *</label><input type="text" id="fFolder" placeholder="1aBcDeFgHiJkLmNoPqRs..."></div>
+      <div class="fg form-full"><label>Folder ID de música en Drive (opcional)</label><input type="text" id="fMusicFolder" placeholder="ID carpeta con MP3 de música..."></div>
+      <div class="fg form-full">
+        <label>Radio online (stream directo)</label>
+        <input type="url" id="fRadio" placeholder="https://ice1.somafm.com/groovesalad-256-mp3">
+        <div class="radio-presets">
+          <button class="rp" onclick="setRP('https://ice1.somafm.com/groovesalad-256-mp3')">🌱 Ambient</button>
+          <button class="rp" onclick="setRP('https://ice1.somafm.com/dronezone-256-mp3')">🌙 Chill</button>
+          <button class="rp" onclick="setRP('https://ice1.somafm.com/seventies-128-mp3')">🕺 70s</button>
+          <button class="rp" onclick="setRP('https://ice1.somafm.com/illstreet-128-mp3')">🎸 Rock</button>
+          <button class="rp" onclick="setRP('https://ice1.somafm.com/lush-128-mp3')">🌸 Suave</button>
+          <button class="rp" onclick="setRP('https://ice1.somafm.com/folkfwd-128-mp3')">🪕 Folk</button>
+          <button class="rp" onclick="setRP('')">🚫 Sin radio</button>
+        </div>
+      </div>
+      <div class="fg"><label>PIN del cliente *</label><input type="text" id="fPin" placeholder="4 dígitos" maxlength="4" value="1234"></div>
+      <div class="fg"><label>Intervalo anuncios</label><select id="fInt"><option value="5">5 min</option><option value="10" selected>10 min</option><option value="15">15 min</option><option value="20">20 min</option><option value="30">30 min</option></select></div>
+      <div class="fg"><label>Fade in/out</label><select id="fFade"><option value="0">Sin fade</option><option value="1">1 seg</option><option value="2" selected>2 seg</option><option value="3">3 seg</option></select></div>
+      <div class="fg"><label>Emoji</label><input type="text" id="fEmoji" placeholder="🏪" maxlength="2" value="🏪"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="saveClient()" id="saveClientBtn">💾 Guardar y generar link</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR MODAL -->
+<div class="modal-bg" id="qrModal">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-header"><h2>📷 Código QR</h2><button class="modal-close" onclick="closeQR()">✕</button></div>
+    <div class="qr-content">
+      <h3 id="qrName">Cliente</h3>
+      <p>Escanea para abrir el reproductor</p>
+      <img id="qrImg" src="" alt="QR">
+      <div class="qr-url" id="qrUrl"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn secondary" style="flex:1;" onclick="closeQR()">Cerrar</button>
+        <button class="btn primary" style="flex:1;" onclick="copyQRLink()">📋 Copiar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CODI MODAL -->
+<div class="modal-bg" id="codiModal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <h2>📱 Cobro con CoDi</h2>
+      <button class="modal-close" onclick="closeCodiModal()">✕</button>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:.8rem;font-weight:700;margin-bottom:4px;" id="codiClientName">Cliente</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--green);font-family:'JetBrains Mono',monospace;margin-bottom:4px;" id="codiMonto">$0</div>
+      <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:16px;">Mensualidad RadioBiz Pro</div>
+      <!-- CoDi QR -->
+      <div style="background:#fff;border-radius:16px;padding:16px;display:inline-block;margin-bottom:14px;">
+        <img id="codiQRImg" src="" alt="QR CoDi" style="width:200px;height:200px;display:block;">
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:12px;margin-bottom:14px;text-align:left;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;">NOMBRE</span>
+          <span style="font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace;">JOSE EDUARDO PEREZ FLORES</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;">BANCO</span>
+          <span style="font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace;">Banorte</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;">CONCEPTO</span>
+          <span style="font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace;" id="codiConcepto">RadioBiz</span>
+        </div>
+      </div>
+      <p style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:14px;line-height:1.7;">Muestra este QR al cliente para que escanee con su app bancaria y pague al instante.</p>
+      <div style="display:flex;gap:8px;">
+        <button class="btn secondary" style="flex:1;" onclick="closeCodiModal()">Cancelar</button>
+        <button class="btn primary" style="flex:1;background:linear-gradient(135deg,#00b386,#00875a);" onclick="confirmarPagoCoDi()">✅ Confirmar pago recibido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGO MANUAL MODAL -->
+<div class="modal-bg" id="pagoManualModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h2>💵 Registrar pago manual</h2>
+      <button class="modal-close" onclick="closePagoManual()">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="fg"><label>Cliente</label><input type="text" id="pmClientName" disabled style="opacity:.7;"></div>
+      <div class="fg"><label>Monto recibido *</label><input type="number" id="pmMonto" placeholder="499" min="0"></div>
+      <div class="fg"><label>Fecha de pago</label><input type="date" id="pmFecha"></div>
+      <div class="fg"><label>Método de pago</label>
+        <select id="pmMetodo">
+          <option value="Efectivo">💵 Efectivo</option>
+          <option value="Transferencia">🏦 Transferencia</option>
+          <option value="CoDi">📱 CoDi</option>
+          <option value="MercadoPago">💙 MercadoPago</option>
+          <option value="Otro">📋 Otro</option>
+        </select>
+      </div>
+      <div class="fg"><label>Notas (opcional)</label><input type="text" id="pmNotas" placeholder="Pago mes de abril..."></div>
+      <div class="form-actions">
+        <button class="btn secondary" onclick="closePagoManual()">Cancelar</button>
+        <button class="btn primary" onclick="guardarPagoManual()">💾 Registrar pago</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MONTO MODAL -->
+<div class="modal-bg" id="montoModal">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-header">
+      <h2>💰 Configurar mensualidad</h2>
+      <button class="modal-close" onclick="closeMontoModal()">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="fg"><label>Cliente</label><input type="text" id="mmClientName" disabled style="opacity:.7;"></div>
+      <div class="fg"><label>Monto mensual (MXN) *</label><input type="number" id="mmMonto" placeholder="499" min="0"></div>
+      <div class="fg"><label>Plan</label>
+        <select id="mmPlan">
+          <option value="Básico">Básico — $299</option>
+          <option value="Estándar" selected>Estándar — $499</option>
+          <option value="Premium">Premium — $799</option>
+          <option value="Personalizado">Personalizado</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="btn secondary" onclick="closeMontoModal()">Cancelar</button>
+        <button class="btn primary" onclick="guardarMonto()">💾 Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+</body>
+</html>
