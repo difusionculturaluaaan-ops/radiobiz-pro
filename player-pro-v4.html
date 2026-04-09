@@ -705,9 +705,10 @@ window.fbListenBlock = (clientId, callback) => {
 </script>
 <script>
 // ═══════════════════════════════════════════
-// CREDENTIALS
+// DRIVE — proxy interno (API key en servidor)
 // ═══════════════════════════════════════════
-const API_KEY = 'AIzaSyDSXE6uNybHnIHWsemPflDwyVS0dqfBK9o';
+const DRIVE_LIST_URL  = (folderId) => `/api/drive/${folderId}`;
+const DRIVE_STREAM_URL = (fileId)  => `/api/drive/stream/${fileId}`;
 const DEFAULT_FOLDER_ID = '1tIXvw-hD2Vp2uDr-u5c919dxmbroPpi9';
 
 // ═══════════════════════════════════════════
@@ -932,7 +933,7 @@ async function syncDrive() {
   if(!currentFolderId)return;
   setDriveStatus('loading','Sincronizando...');
   document.getElementById('drivePill').className='pill'; document.getElementById('driveTxt').textContent='Syncing...';
-  const url=`https://www.googleapis.com/drive/v3/files?q='${currentFolderId}'+in+parents+and+mimeType+contains+'audio'&key=${API_KEY}&fields=files(id,name,modifiedTime)&orderBy=name`;
+  const url = DRIVE_LIST_URL(currentFolderId);
   try {
     const r=await fetch(url); if(!r.ok) throw new Error('HTTP '+r.status);
     const data=await r.json(); const files=data.files||[];
@@ -995,7 +996,7 @@ async function loadDriveMusic(folderId) {
   driveMusicFolderId = id;
   document.getElementById('musicFolderId').value = id;
   document.getElementById('driveMusicList').innerHTML = '<div style="text-align:center;color:var(--info);font-family:\'JetBrains Mono\',monospace;font-size:.66rem;padding:12px 0;">🔄 Cargando playlist...</div>';
-  const url = `https://www.googleapis.com/drive/v3/files?q='${id}'+in+parents+and+mimeType+contains+'audio'&key=${API_KEY}&fields=files(id,name,modifiedTime,size)&orderBy=name`;
+  const url = DRIVE_LIST_URL(id);
   try {
     const r = await fetch(url);
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -1043,7 +1044,7 @@ function renderDriveMusicList() {
 function selectDriveTrack(i) {
   driveMusicIndex = i;
   const f = driveMusicFiles[i];
-  const streamUrl = `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`;
+  const streamUrl = DRIVE_STREAM_URL(f.id);
   musicAudio.src = streamUrl;
   curMode = 'drive';
   document.getElementById('trackName').textContent = f.name.replace(/\.[^.]+$/,'');
@@ -1204,7 +1205,7 @@ function startFadeIn(){
 function playAd(){
   if(!driveJingles.length){log('⚠ Sin jingles en Drive','ad');if(playing){musicAudio.volume=document.getElementById('volM').value/100;scheduleAd();}return;}
   const jingle=driveJingles[jingleIndex];
-  const src=`https://www.googleapis.com/drive/v3/files/${jingle.id}?alt=media&key=${API_KEY}`;
+  const src = DRIVE_STREAM_URL(jingle.id);
   musicAudio.pause();adPlaying=true;
   adAudio.src=src;adAudio.volume=document.getElementById('volA').value/100;adAudio.play();
   const biz=document.getElementById('bizName').value||'Tu Negocio';
