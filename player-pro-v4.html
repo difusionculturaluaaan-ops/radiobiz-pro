@@ -194,6 +194,23 @@ input[type=range]{flex:1;accent-color:var(--accent);cursor:pointer;}
 .force-btn{background:none;border:1px solid var(--warn)44;color:var(--warn);font-size:.62rem;font-weight:700;font-family:'Outfit',sans-serif;padding:4px 10px;border-radius:7px;cursor:pointer;transition:all .2s;}
 .force-btn:hover{background:rgba(245,158,11,.15);}
 body.locked .force-btn{display:none;}
+body.locked .op-only{display:none!important;}
+body.presentacion .op-only{display:none!important;}
+
+/* LINK MODAL */
+#linkModal{position:fixed;inset:0;background:rgba(7,9,26,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:3000;display:none;align-items:center;justify-content:center;padding:20px;}
+#linkModal.show{display:flex;}
+.lm-card{background:rgba(15,18,40,.95);border:1px solid var(--border3);border-radius:24px;padding:28px 26px;width:min(500px,94vw);box-shadow:0 24px 80px rgba(0,0,0,.7);}
+.lm-card h2{font-size:1rem;font-weight:900;margin-bottom:4px;}
+.lm-card>p{font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:20px;}
+.lm-url{background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:11px 13px;font-family:'JetBrains Mono',monospace;font-size:.66rem;font-weight:600;color:var(--accent2);word-break:break-all;line-height:1.7;margin-bottom:14px;max-height:100px;overflow-y:auto;}
+.lm-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.lm-btn{flex:1;padding:10px;border-radius:10px;border:none;font-family:'Outfit',sans-serif;font-size:.76rem;font-weight:700;cursor:pointer;transition:all .2s;min-width:100px;}
+.lm-btn.copy{background:linear-gradient(135deg,var(--accent),#6358e8);color:#fff;}
+.lm-btn.wa{background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;}
+.lm-btn.close{background:var(--s2);border:1px solid var(--border2);color:var(--muted);}
+.lm-src{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--s2);border:1px solid var(--border2);border-radius:9px;margin-bottom:12px;font-size:.68rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text2);}
+.lm-src span:first-child{opacity:.6;font-size:.6rem;text-transform:uppercase;letter-spacing:1px;}
 
 /* STATS */
 .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
@@ -382,6 +399,7 @@ body.locked .force-btn{display:none;}
       <div class="pill" id="drivePill"><div class="d"></div><span id="driveTxt">Drive</span></div>
       <div class="pill" id="statusPill"><div class="d"></div><span id="statusTxt">Inactivo</span></div>
       <div class="wakelock-pill" id="wakelockPill" title="Pantalla activa — Wake Lock"><div class="wd"></div><span id="wakelockTxt">Pantalla activa</span></div>
+      <button class="icon-btn op-only" onclick="generateClientLink()" style="color:var(--accent2);border-color:var(--accent2)44;">🔗 Link cliente</button>
       <button class="icon-btn hide-kiosk" onclick="toggleKiosk()" id="kioskBtn">🖥 Quiosco</button>
       <button class="icon-btn red hide-kiosk" onclick="lockApp()">🔒</button>
     </div>
@@ -1304,9 +1322,91 @@ function checkAdminCmds(){
 }
 
 // ═══════════════════════════════════════════
+// GENERAR LINK CLIENTE
+// ═══════════════════════════════════════════
+let _lmUrl = '';
+
+function generateClientLink() {
+  const base = window.location.origin + '/player-pro-v4.html';
+  const p = new URLSearchParams();
+
+  // Identidad y config
+  const name = document.getElementById('bizName').value.trim() || clientName;
+  p.set('nombre',   name);
+  p.set('locked',   '1');
+  p.set('intervalo', document.getElementById('adInt').value);
+  p.set('fade',     document.getElementById('fadeDur').value);
+  p.set('pin',      PIN);
+
+  // Jingles folder siempre va
+  if(currentFolderId) p.set('folder', currentFolderId);
+
+  // Firebase auth params
+  if(PARAMS.code) p.set('code', PARAMS.code);
+  if(PARAMS.cid)  p.set('cid',  PARAMS.cid);
+
+  // Fuente de música activa
+  let srcLabel = '📁 Local (cliente carga sus MP3)';
+  if(curMode === 'radio' && musicAudio.src && !musicAudio.src.startsWith('blob:') && musicAudio.src !== window.location.href) {
+    p.set('radio', musicAudio.src);
+    const rName = musicAudio.src.split('/').pop().split('-')[0] || 'Radio';
+    srcLabel = '📡 Radio — ' + rName;
+  } else if(driveMusicFolderId) {
+    p.set('musicfolder', driveMusicFolderId);
+    srcLabel = '☁️ Drive — ' + driveMusicFolderId.substring(0, 12) + '...';
+  }
+
+  _lmUrl = base + '?' + p.toString();
+
+  document.getElementById('lmUrl').textContent    = _lmUrl;
+  document.getElementById('lmSrcTxt').textContent = srcLabel;
+  document.getElementById('lmIntTxt').textContent = 'Cada ' + document.getElementById('adInt').value + ' min';
+  document.getElementById('linkModal').classList.add('show');
+}
+
+function closeLinkModal() { document.getElementById('linkModal').classList.remove('show'); }
+
+function copyLmLink() {
+  navigator.clipboard.writeText(_lmUrl)
+    .then(()=>{ log('📋 Link copiado','ok'); closeLinkModal(); })
+    .catch(()=>{ const ta=document.createElement('textarea');ta.value=_lmUrl;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta); log('📋 Link copiado','ok'); closeLinkModal(); });
+}
+
+function shareLmWA() {
+  const biz = document.getElementById('bizName').value || clientName;
+  const msg = encodeURIComponent(`🎵 *RadioBiz Pro* — Tu reproductor está listo!\n\n*Negocio:* ${biz}\n\n👆 Abre este link en la pantalla de tu negocio:\n${_lmUrl}\n\n📌 PIN de acceso: *${PIN}*\n\n_Powered by RadioBiz Pro_`);
+  window.open('https://wa.me/?text='+msg,'_blank');
+}
+
+// Cerrar modal con clic fuera
+document.getElementById('linkModal')?.addEventListener('click', e => { if(e.target.id === 'linkModal') closeLinkModal(); });
+
+// ═══════════════════════════════════════════
 // LOG
 // ═══════════════════════════════════════════
 function log(msg,type){const el=document.getElementById('actLog');const now=new Date();const ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');const d=document.createElement('div');d.className='le'+(type?' '+type:'');d.innerHTML=`<span class="ts">${ts}</span>${msg}`;el.insertBefore(d,el.firstChild);}
 </script>
+
+<!-- LINK CLIENTE MODAL -->
+<div id="linkModal">
+  <div class="lm-card">
+    <h2>🔗 Link del cliente</h2>
+    <p>Configuración actual guardada en el link — copia y envíalo</p>
+    <div class="lm-src">
+      <span>Fuente</span>
+      <span id="lmSrcTxt">—</span>
+    </div>
+    <div class="lm-src">
+      <span>Intervalo</span>
+      <span id="lmIntTxt">—</span>
+    </div>
+    <div class="lm-url" id="lmUrl"></div>
+    <div class="lm-actions">
+      <button class="lm-btn copy" onclick="copyLmLink()">📋 Copiar link</button>
+      <button class="lm-btn wa"   onclick="shareLmWA()">💬 WhatsApp</button>
+      <button class="lm-btn close" onclick="closeLinkModal()">✕ Cerrar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
