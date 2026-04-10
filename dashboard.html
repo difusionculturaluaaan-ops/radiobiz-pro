@@ -160,11 +160,14 @@ function generateLink(c) {
     intervalo: c.intervalo,
     locked: '1',
     fade: c.fade||'2',
-    code: c.code, // unique access code
-    cid: c.id,   // client ID for session tracking
+    code: c.code,
+    cid: c.id,
   });
-  if(c.radio) p.set('radio', c.radio);
-  if(c.musicfolder) p.set('musicfolder', c.musicfolder);
+  // Fuente de música — usa sourceMode explícito, o detecta por campos existentes
+  const src = c.sourceMode || (c.radio ? 'radio' : c.musicfolder ? 'drive' : 'local');
+  if(src === 'radio' && c.radio)         p.set('radio', c.radio);
+  if(src === 'drive' && c.musicfolder)   p.set('musicfolder', c.musicfolder);
+  // src === 'local' → el cliente carga sus propios MP3, no se agrega param
   if(c.presentacion) p.set('modo', 'presentacion');
   return BASE_URL + '?' + p.toString();
 }
@@ -273,6 +276,8 @@ window.openAddModal = () => {
   document.getElementById('fInt').value='10';
   document.getElementById('fFade').value='2';
   document.getElementById('fEmoji').value='🏪';
+  document.getElementById('fSourceMode').value='radio';
+  onSourceModeChange();
   document.getElementById('clientModal').classList.add('show');
 };
 
@@ -289,16 +294,26 @@ window.openEditModal = id => {
   document.getElementById('fInt').value=c.intervalo;
   document.getElementById('fFade').value=c.fade||'2';
   document.getElementById('fEmoji').value=c.emoji||'🏪';
+  const src = c.sourceMode || (c.radio ? 'radio' : c.musicfolder ? 'drive' : 'local');
+  document.getElementById('fSourceMode').value = src;
+  onSourceModeChange();
   document.getElementById('clientModal').classList.add('show');
 };
 
 window.closeModal = () => document.getElementById('clientModal').classList.remove('show');
+
+window.onSourceModeChange = () => {
+  const src = document.getElementById('fSourceMode').value;
+  document.getElementById('fRadioRow').style.display       = src === 'radio' ? '' : 'none';
+  document.getElementById('fMusicFolderRow').style.display = src === 'drive' ? '' : 'none';
+};
 
 window.saveClient = async () => {
   const name=document.getElementById('fName').value.trim();
   const folder=document.getElementById('fFolder').value.trim();
   const radio=document.getElementById('fRadio').value.trim();
   const musicfolder=document.getElementById('fMusicFolder').value.trim();
+  const sourceMode=document.getElementById('fSourceMode').value;
   const pin=document.getElementById('fPin').value.trim()||'1234';
   const intervalo=document.getElementById('fInt').value;
   const fade=document.getElementById('fFade').value;
@@ -312,12 +327,12 @@ window.saveClient = async () => {
   const cleanMusicFolder=mfMatch?mfMatch[1]:musicfolder;
   try {
     if(editingId) {
-      await fbUpdate('clients/'+editingId, {name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji});
+      await fbUpdate('clients/'+editingId, {name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji,sourceMode});
       toast('✅ '+name+' actualizado','success');
     } else {
       const id = 'c_'+Date.now();
       const code = generateCode();
-      await fbSet('clients/'+id, {id,name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji,code,blocked:false,createdAt:Date.now()});
+      await fbSet('clients/'+id, {id,name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji,sourceMode,code,blocked:false,createdAt:Date.now()});
       toast('✅ '+name+' creado — generando link corto...','success');
       // Auto-generate short URL
       setTimeout(async () => {
@@ -1090,8 +1105,16 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
     <div class="form-grid">
       <div class="fg form-full"><label>Nombre del negocio *</label><input type="text" id="fName" placeholder="Ej: Farmacia San José"></div>
       <div class="fg form-full"><label>Folder ID de jingles en Drive *</label><input type="text" id="fFolder" placeholder="1aBcDeFgHiJkLmNoPqRs..."></div>
-      <div class="fg form-full"><label>Folder ID de música en Drive (opcional)</label><input type="text" id="fMusicFolder" placeholder="ID carpeta con MP3 de música..."></div>
+      <div class="fg form-full" id="fMusicFolderRow"><label>Folder ID de música en Drive</label><input type="text" id="fMusicFolder" placeholder="ID carpeta con MP3 de música en Drive..."></div>
       <div class="fg form-full">
+        <label>Fuente de música del cliente</label>
+        <select id="fSourceMode" onchange="onSourceModeChange()" style="width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:600;padding:9px 11px;outline:none;">
+          <option value="radio">📡 Radio — stream online (URL abajo)</option>
+          <option value="drive">☁️ Drive — carpeta de música en Drive</option>
+          <option value="local">📁 Local — el cliente sube sus propios MP3</option>
+        </select>
+      </div>
+      <div class="fg form-full" id="fRadioRow">
         <label>Radio online (stream directo)</label>
         <input type="url" id="fRadio" placeholder="https://ice1.somafm.com/groovesalad-256-mp3">
         <div class="radio-presets">

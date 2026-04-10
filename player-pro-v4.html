@@ -120,6 +120,7 @@ body.presentacion .track-meta h2{font-size:1.3rem;}
 body.presentacion .vol-row{display:none;}
 body.presentacion .force-btn{display:none;}
 body.presentacion .stats-grid{display:none;}
+body.presentacion .local-music-card{display:none;}
 body.presentacion .player-card{width:100%;max-width:620px;}
 body.presentacion .main>div:first-child{width:100%;}
 /* Pres-only elements hidden by default */
@@ -268,6 +269,17 @@ body.locked .force-btn{display:none;}
 .presets{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;}
 .preset{background:var(--s2);border:1px solid var(--border2);border-radius:7px;color:var(--muted);font-size:.65rem;font-weight:700;font-family:'JetBrains Mono',monospace;padding:5px 9px;cursor:pointer;transition:all .2s;}
 .preset:hover{color:var(--text);border-color:var(--border3);}
+
+/* LOCAL MUSIC CARD */
+.local-music-card{background:var(--card-bg);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border2);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);}
+.upload-zone{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--s2);border:2px dashed var(--border2);border-radius:12px;cursor:pointer;transition:all .2s;margin-bottom:0;}
+.upload-zone:hover{border-color:var(--accent)55;background:rgba(139,124,248,.07);}
+.uz-icon{font-size:1.4rem;flex-shrink:0;}
+.uz-text{font-size:.8rem;font-weight:700;color:var(--text);}
+.uz-sub{font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;display:block;margin-top:2px;}
+.local-info{display:flex;align-items:center;gap:10px;margin-top:10px;padding:9px 12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.3);border-radius:9px;}
+.local-info span{font-size:.72rem;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;flex:1;}
+.local-info button{background:none;border:1px solid rgba(248,113,113,.4);color:var(--red);font-size:.65rem;font-weight:700;padding:3px 9px;border-radius:6px;cursor:pointer;}
 
 /* LOG */
 .log-card{background:var(--card-bg);backdrop-filter:blur(16px);border:1px solid var(--border2);border-radius:13px;padding:14px;box-shadow:var(--shadow);}
@@ -457,6 +469,24 @@ body.locked .force-btn{display:none;}
         <div style="margin-top:10px;display:flex;align-items:center;gap:10px;padding:13px 16px;background:var(--s2);border:1px solid var(--border2);border-radius:12px;">
           <span style="font-size:.6rem;font-weight:700;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1.5px;flex:1;">Spots emitidos hoy</span>
           <span id="presStatTotal" style="font-size:1.5rem;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--accent);">0</span>
+        </div>
+      </div>
+
+      <!-- LOCAL MUSIC UPLOAD — siempre visible, incluso en modo bloqueado -->
+      <div class="local-music-card">
+        <div class="sl">📁 Tu música</div>
+        <label class="upload-zone" for="localFileInput">
+          <span class="uz-icon">📂</span>
+          <div>
+            <span class="uz-text">Seleccionar carpeta o archivos MP3</span>
+            <span class="uz-sub">MP3 · WAV · M4A — haz clic o arrastra</span>
+          </div>
+        </label>
+        <input type="file" id="localFileInput" accept="audio/*" multiple style="display:none"
+               onchange="handleLocalUpload(this)">
+        <div class="local-info" id="localMusicInfo" style="display:none;">
+          <span id="localMusicCount">0 archivos</span>
+          <button onclick="clearLocalMusic()">✕ Limpiar</button>
         </div>
       </div>
 
@@ -956,6 +986,34 @@ function setDriveStatus(type,msg){const el=document.getElementById('driveStatus'
 // MUSIC
 // ═══════════════════════════════════════════
 function handleFiles(e){Array.from(e.target.files).forEach(f=>musicFiles.push({name:f.name,url:URL.createObjectURL(f)}));renderFlist();if(!playing&&curTrack<0)selectTrack(0);}
+
+function handleLocalUpload(input) {
+  const files = Array.from(input.files).filter(f => f.type.startsWith('audio/') || /\.(mp3|wav|m4a|ogg|flac|aac)$/i.test(f.name));
+  if(!files.length){ log('⚠ No se encontraron archivos de audio','info'); return; }
+  // Reemplaza la playlist actual con los archivos del cliente
+  musicFiles = files.map(f => ({name: f.name, url: URL.createObjectURL(f)}));
+  driveMusicFiles = []; driveMusicIndex = 0;
+  curMode = 'mp3'; curTrack = -1;
+  renderFlist();
+  selectTrack(0);
+  document.getElementById('localMusicCount').textContent = files.length + ' archivo' + (files.length !== 1 ? 's' : '') + ' cargado' + (files.length !== 1 ? 's' : '');
+  document.getElementById('localMusicInfo').style.display = 'flex';
+  log('📁 ' + files.length + ' archivos de música cargados','ok');
+  if(playing) musicAudio.play().catch(()=>{});
+}
+
+function clearLocalMusic() {
+  musicFiles.forEach(f => URL.revokeObjectURL(f.url));
+  musicFiles = []; curTrack = -1;
+  musicAudio.pause(); playing = false; updateBtn();
+  renderFlist();
+  document.getElementById('localMusicInfo').style.display = 'none';
+  document.getElementById('localFileInput').value = '';
+  document.getElementById('trackName').textContent = 'Sin pista cargada';
+  document.getElementById('trackSrc').textContent = 'Selecciona una fuente';
+  document.getElementById('vinyl').classList.remove('spin');
+  log('🗑 Música local eliminada');
+}
 function renderFlist(){const el=document.getElementById('flist');if(!musicFiles.length){el.innerHTML='<div style="text-align:center;color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:.66rem;padding:9px 0;">Sin archivos</div>';return;}el.innerHTML=musicFiles.map((f,i)=>`<div class="fi ${i===curTrack?'on':''}" onclick="selectTrack(${i})"><span class="fnum">${String(i+1).padStart(2,'0')}</span><span class="fn">${f.name}</span><span class="fdel" onclick="rmTrack(event,${i})">✕</span></div>`).join('');}
 function rmTrack(e,i){e.stopPropagation();musicFiles.splice(i,1);if(curTrack===i){musicAudio.pause();curTrack=-1;playing=false;}else if(curTrack>i)curTrack--;renderFlist();}
 function selectTrack(i){curTrack=i;musicAudio.src=musicFiles[i].url;document.getElementById('trackName').textContent=musicFiles[i].name.replace(/\.[^.]+$/,'');document.getElementById('trackSrc').textContent='Archivo local';renderFlist();}
