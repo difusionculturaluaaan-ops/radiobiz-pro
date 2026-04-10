@@ -251,7 +251,7 @@ function renderClientCards(container, list) {
         <button class="ca-btn edit" onclick="openEditModal('${c.id}')">✏️</button>
         <button class="ca-btn del" onclick="deleteClient('${c.id}')">🗑️</button>
       </div>
-      ${!c.shortUrl ? `<button onclick="generateShortForClient('${c.id}')" style="width:100%;margin-top:7px;padding:7px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:.68rem;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;">🔗 Generar link corto</button>` : ''}
+      <button onclick="generateShortForClient('${c.id}')" style="width:100%;margin-top:7px;padding:7px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:.68rem;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;">${c.shortUrl ? '🔄 Regenerar link' : '🔗 Generar link corto'}</button>
       <div style="margin-top:9px;">
         <button class="ca-btn ctrl" onclick="goCtrl('${c.id}')" style="width:100%;padding:9px;">🎛️ Control remoto</button>
       </div>`;
@@ -411,11 +411,12 @@ window.copyQRLink = () => { navigator.clipboard.writeText(qrCurrentLink).then(()
 // ═══ CONTROL REMOTE ═══
 window.generateShortForClient = async id => {
   const c = clients[id]; if(!c) return;
-  toast('🔗 Generando link corto...','');
+  toast('🔗 Regenerando link...','');
+  // Borrar el shortUrl viejo de Firebase y del caché
+  await fbUpdate('clients/'+id, { shortUrl: null });
   delete shortUrlCache[id];
-  delete c.shortUrl;
   const short = await getShortUrl(id);
-  toast('✅ Link corto generado','success');
+  toast('✅ Nuevo link generado: '+short,'success');
   renderOverview();
   if(document.getElementById('page-clients').classList.contains('active')) renderAllClients();
 };
