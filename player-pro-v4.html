@@ -102,6 +102,36 @@ body.kiosk .side{display:none;}
 body.kiosk .layout{grid-template-columns:1fr;}
 body.kiosk .hide-kiosk{display:none!important;}
 
+/* PRESENTACION MODE */
+body.presentacion .side{display:none;}
+body.presentacion .layout{grid-template-columns:1fr;}
+body.presentacion .topbar{display:none;}
+body.presentacion #app{height:100dvh;}
+body.presentacion .main{padding:20px 24px;justify-content:flex-start;align-items:center;}
+body.presentacion .settings-card{display:none;}
+body.presentacion .log-card{display:none;}
+body.presentacion .hide-kiosk{display:none!important;}
+body.presentacion .vinyl{width:130px;height:130px;font-size:3rem;}
+body.presentacion .vinyl::after{width:26px;height:26px;}
+body.presentacion .play-btn{width:80px;height:80px;font-size:1.8rem;box-shadow:0 0 48px var(--accent)88,0 6px 24px rgba(0,0,0,.5);}
+body.presentacion .cbtn{display:none;}
+body.presentacion .ctrl-row{gap:0;}
+body.presentacion .track-meta h2{font-size:1.3rem;}
+body.presentacion .vol-row{display:none;}
+body.presentacion .force-btn{display:none;}
+body.presentacion .stats-grid{display:none;}
+body.presentacion .player-card{width:100%;max-width:620px;}
+body.presentacion .main>div:first-child{width:100%;}
+/* Pres-only elements hidden by default */
+#presBizHeader{display:none;}
+#onAirBadge{display:none;}
+#presSpotSection{display:none;}
+body.presentacion #presBizHeader{display:block;width:100%;max-width:620px;text-align:center;margin-bottom:4px;}
+body.presentacion #presSpotSection{display:block;width:100%;max-width:620px;}
+.on-air-badge{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;background:linear-gradient(135deg,rgba(245,158,11,.2),rgba(251,191,36,.12));border:1px solid rgba(245,158,11,.5);border-radius:10px;margin-bottom:12px;animation:slideUp .35s ease;}
+.on-air-badge .oa-dot{width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 10px var(--warn);animation:blink .7s infinite;}
+.on-air-badge span{font-size:.78rem;font-weight:900;color:var(--warn);letter-spacing:2px;font-family:'JetBrains Mono',monospace;}
+
 .sl{font-family:'JetBrains Mono',monospace;font-size:.58rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
 .sl::after{content:'';flex:1;height:1px;background:var(--border2);}
 
@@ -348,10 +378,21 @@ body.locked .force-btn{display:none;}
   <div class="layout">
     <div class="main">
 
+      <!-- PRES: Business header (only visible in presentacion mode) -->
+      <div id="presBizHeader">
+        <div style="font-size:2.4rem;margin-bottom:8px;" id="presBizEmoji">🏪</div>
+        <h1 style="font-size:2.2rem;font-weight:900;letter-spacing:-1px;color:var(--text);" id="presBizName">Mi Negocio</h1>
+        <p style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px;letter-spacing:1px;text-transform:uppercase;">Sistema de audio · RadioBiz Pro</p>
+      </div>
+
       <!-- PLAYER -->
       <div>
         <div class="sl">▶ Reproduciendo ahora</div>
         <div class="player-card" id="playerCard">
+          <div id="onAirBadge" class="on-air-badge">
+            <div class="oa-dot"></div>
+            <span>ON AIR</span>
+          </div>
           <div class="track-row">
             <div class="vinyl" id="vinyl">🎵</div>
             <div class="track-meta">
@@ -406,6 +447,16 @@ body.locked .force-btn{display:none;}
           <div class="stat-card c1"><div class="sv" id="statTotal">0</div><div class="sl2">Anuncios hoy</div></div>
           <div class="stat-card c2"><div class="sv" id="statJingle">—</div><div class="sl2">Jingle actual</div></div>
           <div class="stat-card c3"><div class="sv" id="statDrive">0</div><div class="sl2">En Drive</div></div>
+        </div>
+      </div>
+
+      <!-- PRES: Spot section (only visible in presentacion mode) -->
+      <div id="presSpotSection">
+        <div class="sl">🎙️ Spots programados</div>
+        <div id="presJQueue" class="jqueue"></div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:10px;padding:13px 16px;background:var(--s2);border:1px solid var(--border2);border-radius:12px;">
+          <span style="font-size:.6rem;font-weight:700;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1.5px;flex:1;">Spots emitidos hoy</span>
+          <span id="presStatTotal" style="font-size:1.5rem;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--accent);">0</span>
         </div>
       </div>
 
@@ -648,6 +699,7 @@ function getParams() {
     musicfolder: p.get('musicfolder') || null,
     code:    p.get('code')    || null,
     cid:     p.get('cid')     || null,
+    modo:    p.get('modo')    || null,
   };
 }
 
@@ -773,6 +825,20 @@ function applyParams() {
   if(isLocked) {
     applyLockedMode();
   }
+  if(PARAMS.modo === 'presentacion') {
+    applyPresentacionMode();
+  }
+}
+
+function applyPresentacionMode() {
+  document.body.classList.add('presentacion');
+  // Auto-skip PIN screen — operator pre-configured everything
+  document.getElementById('pinScreen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  // Set big business name header
+  const nameEl = document.getElementById('presBizName');
+  if(nameEl) nameEl.textContent = clientName;
+  log('🎬 Modo Presentación activo','ok');
 }
 
 function applyLockedMode() {
@@ -803,6 +869,8 @@ function updateStatsDisplay() {
   document.getElementById('statTotal').textContent = statsToday;
   document.getElementById('statDrive').textContent = driveJingles.length;
   document.getElementById('statJingle').textContent = driveJingles.length ? `${jingleIndex+1}/${driveJingles.length}` : '—';
+  const pst = document.getElementById('presStatTotal');
+  if(pst) pst.textContent = statsToday;
 }
 
 // ═══════════════════════════════════════════
@@ -863,15 +931,24 @@ async function syncDrive() {
   }
 }
 function renderJingleQueue() {
-  const el=document.getElementById('jingleQueue');
-  if(!driveJingles.length){el.innerHTML='<div style="text-align:center;color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:.66rem;padding:12px 0;">Sin jingles en Drive.</div>';return;}
-  el.innerHTML=driveJingles.map((f,i)=>{
-    let badge='',cls='';
-    if(adPlaying&&i===jingleIndex){badge='<span class="jbadge now">● NOW</span>';cls='active';}
-    else if(!adPlaying&&i===jingleIndex){badge='<span class="jbadge next-b">NEXT</span>';cls='next';}
+  const el = document.getElementById('jingleQueue');
+  const empty = '<div style="text-align:center;color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:.66rem;padding:12px 0;">Sin jingles en Drive.</div>';
+  if(!driveJingles.length) {
+    el.innerHTML = empty;
+    const pq = document.getElementById('presJQueue');
+    if(pq) pq.innerHTML = empty;
+    return;
+  }
+  const makeRow = (f, i) => {
+    let badge='', cls='';
+    if(adPlaying && i===jingleIndex){badge='<span class="jbadge now">● NOW</span>';cls='active';}
+    else if(!adPlaying && i===jingleIndex){badge='<span class="jbadge next-b">NEXT</span>';cls='next';}
     else{badge=`<span class="jbadge done">#${i+1}</span>`;}
     return `<div class="jq ${cls}"><span class="ji">🎙️</span><span class="jn">${f.name.replace(/\.[^.]+$/,'')}</span><span class="jc">${String(i+1).padStart(2,'0')}/${driveJingles.length}</span>${badge}</div>`;
-  }).join('');
+  };
+  el.innerHTML = driveJingles.map(makeRow).join('');
+  const pq = document.getElementById('presJQueue');
+  if(pq) pq.innerHTML = driveJingles.slice(0, 10).map(makeRow).join('');
 }
 function setDriveStatus(type,msg){const el=document.getElementById('driveStatus');el.textContent=msg;el.className='drive-val '+(type==='ok'?'ok':type==='err'?'err':'loading');}
 
@@ -1117,6 +1194,7 @@ function playAd(){
   document.getElementById('progFill').classList.add('ad-p');
   document.getElementById('trackName').textContent=jingle.name.replace(/\.[^.]+$/,'');
   document.getElementById('trackSrc').textContent=`Jingle ${jingleIndex+1} de ${driveJingles.length}`;
+  document.getElementById('onAirBadge').style.display='flex';
   setStatus('ad','Anuncio');updateBtn();renderJingleQueue();
   adAudio.onloadedmetadata=()=>{adDur=adAudio.duration;startRing();};
   adAudio.ontimeupdate=()=>{if(!isNaN(adDur)&&adDur>0){const p=adAudio.currentTime/adDur;document.getElementById('progFill').style.width=(p*100)+'%';document.getElementById('tEl').textContent=fmt(adAudio.currentTime);document.getElementById('tDur').textContent=fmt(adDur);}};
@@ -1128,6 +1206,7 @@ function startRing(){clearInterval(adRingTimer);const ring=document.getElementBy
 function onAdEnd(){
   clearInterval(adRingTimer);adPlaying=false;adAudio.ontimeupdate=null;adAudio.onloadedmetadata=null;
   jingleIndex=(jingleIndex+1)%driveJingles.length;
+  document.getElementById('onAirBadge').style.display='none';
   document.getElementById('adBanner').classList.remove('show');
   document.getElementById('playerCard').classList.remove('ad-mode');
   document.getElementById('vinyl').classList.remove('ad-v');

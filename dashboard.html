@@ -165,6 +165,7 @@ function generateLink(c) {
   });
   if(c.radio) p.set('radio', c.radio);
   if(c.musicfolder) p.set('musicfolder', c.musicfolder);
+  if(c.presentacion) p.set('modo', 'presentacion');
   return BASE_URL + '?' + p.toString();
 }
 
@@ -252,6 +253,9 @@ function renderClientCards(container, list) {
         <button class="ca-btn del" onclick="deleteClient('${c.id}')">🗑️</button>
       </div>
       <button onclick="generateShortForClient('${c.id}')" style="width:100%;margin-top:7px;padding:7px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:.68rem;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;">${c.shortUrl ? '🔄 Regenerar link' : '🔗 Generar link corto'}</button>
+      <button onclick="togglePresentacion('${c.id}')" style="width:100%;margin-top:7px;padding:8px;border-radius:8px;border:1px solid ${c.presentacion?'var(--accent)40':'var(--border2)'};background:${c.presentacion?'rgba(139,124,248,.12)':'var(--s2)'};color:${c.presentacion?'var(--accent)':'var(--muted)'};font-size:.68rem;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s;">
+        ${c.presentacion ? '🎬 Modo Presentación: ON' : '📺 Activar Modo Presentación'}
+      </button>
       <div style="margin-top:9px;">
         <button class="ca-btn ctrl" onclick="goCtrl('${c.id}')" style="width:100%;padding:9px;">🎛️ Control remoto</button>
       </div>`;
@@ -352,6 +356,20 @@ window.toggleBlock = async id => {
   } catch(e) {
     toast('Error al cambiar estado: '+e.message, 'error');
   }
+};
+
+window.togglePresentacion = async id => {
+  const c = clients[id]; if(!c) return;
+  const newVal = !c.presentacion;
+  try {
+    await fbUpdate('clients/'+id, {presentacion: newVal});
+    // Invalidate short URL so it regenerates with/without modo=presentacion
+    if(c.shortUrl) {
+      await fbUpdate('clients/'+id, {shortUrl: null});
+      delete shortUrlCache[id];
+    }
+    toast(newVal ? '🎬 Modo Presentación activado' : '📺 Modo Presentación desactivado', 'success');
+  } catch(e) { toast('Error: '+e.message, 'error'); }
 };
 
 window.setRP = url => { document.getElementById('fRadio').value=url; document.querySelectorAll('.rp').forEach(b=>b.classList.remove('on')); };
