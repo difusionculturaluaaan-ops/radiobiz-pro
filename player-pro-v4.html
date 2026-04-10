@@ -710,8 +710,10 @@ window.fbListenBlock = (clientId, callback) => {
 // ═══════════════════════════════════════════
 // DRIVE — proxy interno (API key en servidor)
 // ═══════════════════════════════════════════
-const DRIVE_LIST_URL  = (folderId) => `/api/drive/${folderId}`;
-const DRIVE_STREAM_URL = (fileId)  => `/api/drive/stream/${fileId}`;
+// API proxy siempre en Vercel — funciona desde cualquier dominio
+const DRIVE_API_BASE = 'https://radiobiz-pro.vercel.app';
+const DRIVE_LIST_URL  = (folderId) => `${DRIVE_API_BASE}/api/drive/${folderId}`;
+const DRIVE_STREAM_URL = (fileId)  => `${DRIVE_API_BASE}/api/drive/stream/${fileId}`;
 const DEFAULT_FOLDER_ID = '1tIXvw-hD2Vp2uDr-u5c919dxmbroPpi9';
 
 // ═══════════════════════════════════════════
