@@ -1344,15 +1344,20 @@ function generateClientLink() {
   if(PARAMS.code) p.set('code', PARAMS.code);
   if(PARAMS.cid)  p.set('cid',  PARAMS.cid);
 
-  // Fuente de música activa
+  // Fuente de música activa — usa curMode para no confundir radio cargada vs activa
   let srcLabel = '📁 Local (cliente carga sus MP3)';
-  if(curMode === 'radio' && musicAudio.src && !musicAudio.src.startsWith('blob:') && musicAudio.src !== window.location.href) {
-    p.set('radio', musicAudio.src);
-    const rName = musicAudio.src.split('/').pop().split('-')[0] || 'Radio';
+  const radioInput = (document.getElementById('radioUrl')?.value || '').trim();
+  if(curMode === 'radio' && radioInput) {
+    p.set('radio', radioInput);
+    const rName = radioInput.split('/').pop().split('-')[0] || 'Radio';
     srcLabel = '📡 Radio — ' + rName;
-  } else if(driveMusicFolderId) {
+  } else if(curMode === 'drive' && driveMusicFolderId) {
     p.set('musicfolder', driveMusicFolderId);
-    srcLabel = '☁️ Drive — ' + driveMusicFolderId.substring(0, 12) + '...';
+    srcLabel = '☁️ Drive Music — ' + driveMusicFolderId.substring(0, 12) + '...';
+  } else if(curMode !== 'mp3' && driveMusicFolderId) {
+    // fallback: musicfolder configurado aunque no se haya activado el tab
+    p.set('musicfolder', driveMusicFolderId);
+    srcLabel = '☁️ Drive Music — ' + driveMusicFolderId.substring(0, 12) + '...';
   }
 
   _lmUrl = base + '?' + p.toString();
