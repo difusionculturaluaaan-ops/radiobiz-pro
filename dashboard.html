@@ -346,8 +346,12 @@ window.deleteClient = async id => {
 window.toggleBlock = async id => {
   const c = clients[id]; if(!c)return;
   const newBlocked = !c.blocked;
-  await fbUpdate('clients/'+id, {blocked: newBlocked});
-  toast(newBlocked ? '🚫 Cliente bloqueado' : '✅ Cliente activado', newBlocked?'error':'success');
+  try {
+    await fbUpdate('clients/'+id, {blocked: newBlocked});
+    toast(newBlocked ? '🚫 Cliente bloqueado' : '✅ Cliente activado', newBlocked?'error':'success');
+  } catch(e) {
+    toast('Error al cambiar estado: '+e.message, 'error');
+  }
 };
 
 window.setRP = url => { document.getElementById('fRadio').value=url; document.querySelectorAll('.rp').forEach(b=>b.classList.remove('on')); };
