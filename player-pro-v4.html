@@ -683,14 +683,17 @@ window.fbRegisterSession = async (clientId) => {
 };
 
 // Listen for real-time commands from dashboard
+// Uses bootTime so reloads don't block fresh commands, and removes the node after processing.
+const FB_BOOT_TS = Date.now();
 window.fbListenCommands = (clientId, callback) => {
   onValue(ref(fbDb, 'commands/'+clientId), snap => {
     if(snap.exists()) {
       const cmd = snap.val();
-      const lastTs = parseInt(localStorage.getItem('rbz_last_fb_ts')||'0');
-      if(cmd.ts > lastTs) {
-        localStorage.setItem('rbz_last_fb_ts', cmd.ts);
+      // Only execute commands sent AFTER this player session started
+      if(cmd.ts && cmd.ts > FB_BOOT_TS) {
         callback(cmd);
+        // Delete command node so it doesn't re-fire on reconnect
+        remove(ref(fbDb, 'commands/'+clientId)).catch(() => {});
       }
     }
   });
