@@ -757,7 +757,7 @@ const PARAMS = getParams();
 let PIN = PARAMS.pin || localStorage.getItem('rbz_pin') || '1234';
 let isLocked = PARAMS.locked;
 let pinBuf = '';
-let playing = false, adPlaying = false, isFading = false;
+let playing = false, adPlaying = false, isFading = false, playAdNextStart = true;
 let adIntervalMs = (PARAMS.intervalo ? parseInt(PARAMS.intervalo) : 10) * 60000;
 let adTimer = null, cdTimer = null, nextAdAt = null;
 let adDur = 0, adRingTimer = null;
@@ -1167,6 +1167,12 @@ document.addEventListener('visibilitychange', () => {
 function togglePlay(){if(adPlaying||isFading)return;playing?pauseMusic():playMusic();}
 function playMusic(){
   if(!musicAudio.src||musicAudio.src===location.href){log('⚠ Sin fuente de audio');return;}
+  if(playAdNextStart && driveJingles.length > 0){
+    playAdNextStart = false;
+    playAd();
+    requestWakeLock();
+    return;
+  }
   musicAudio.volume=document.getElementById('volM').value/100;
   musicAudio.play().then(()=>{
     playing=true;updateBtn();setStatus('live','Reproduciendo');
@@ -1181,6 +1187,7 @@ function pauseMusic(){
   document.getElementById('vinyl').classList.remove('spin');
   clearAdSchedule();
   releaseWakeLock();
+  playAdNextStart = true;
   log('⏸ Pausado');
 }
 function updateBtn(){const b=document.getElementById('playBtn');b.textContent=playing?'⏸':'▶';b.classList.toggle('ad',adPlaying);}
