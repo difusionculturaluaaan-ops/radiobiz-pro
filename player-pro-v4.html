@@ -1041,9 +1041,10 @@ function switchTab(t){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.getElementById('panel-'+t).classList.add('on');
   if(t==='drive' && driveMusicFolderId) loadDriveMusic();
+  saveMusicConfigToFirebase();
 }
 function setPreset(url,name){document.getElementById('radioUrl').value=url;loadRadio(name);}
-function loadRadio(name){const url=document.getElementById('radioUrl').value.trim();if(!url)return;musicAudio.src=url;document.getElementById('trackName').textContent=name||'Radio Online';document.getElementById('trackSrc').textContent='Stream en línea';curMode='radio';log('📡 Radio: '+(name||url),'ok');}
+function loadRadio(name){const url=document.getElementById('radioUrl').value.trim();if(!url)return;musicAudio.src=url;document.getElementById('trackName').textContent=name||'Radio Online';document.getElementById('trackSrc').textContent='Stream en línea';curMode='radio';log('📡 Radio: '+(name||url),'ok');saveMusicConfigToFirebase();}
 
 // ═══════════════════════════════════════════
 // DRIVE MUSIC PLAYLIST
@@ -1068,6 +1069,7 @@ async function loadDriveMusic(folderId) {
     applyDriveMusicOrder();
     localStorage.setItem('rbz_music_folder', id);
     log('☁️ Playlist Drive: ' + files.length + ' canciones', 'drive');
+    saveMusicConfigToFirebase();
   } catch(e) {
     document.getElementById('driveMusicList').innerHTML = `<div style="text-align:center;color:var(--warn);font-family:'JetBrains Mono',monospace;font-size:.66rem;padding:12px 0;">Error: ${e.message}</div>`;
     log('⚠ Error cargando música de Drive: ' + e.message);
@@ -1316,7 +1318,9 @@ function onAdEnd(){
 // ═══════════════════════════════════════════
 function setStatus(cls,txt){const p=document.getElementById('statusPill');p.className='pill'+(cls?' '+cls:'');document.getElementById('statusTxt').textContent=txt;}
 function loadConfig(){const c=JSON.parse(localStorage.getItem('rbz_cfg')||'{}');if(!PARAMS.intervalo&&c.adInt){document.getElementById('adInt').value=c.adInt;adIntervalMs=c.adInt*60000;}if(c.volM){document.getElementById('volM').value=c.volM;document.getElementById('vMv').textContent=c.volM+'%';musicAudio.volume=c.volM/100;}if(c.volA){document.getElementById('volA').value=c.volA;document.getElementById('vAv').textContent=c.volA+'%';adAudio.volume=c.volA/100;}if(!PARAMS.fade&&c.fadeDur)document.getElementById('fadeDur').value=c.fadeDur;}
-function saveConfig(){localStorage.setItem('rbz_cfg',JSON.stringify({adInt:document.getElementById('adInt').value,volM:document.getElementById('volM').value,volA:document.getElementById('volA').value,fadeDur:document.getElementById('fadeDur').value}));}
+function saveConfig(){localStorage.setItem('rbz_cfg',JSON.stringify({adInt:document.getElementById('adInt').value,volM:document.getElementById('volM').value,volA:document.getElementById('volA').value,fadeDur:document.getElementById('fadeDur').value}));saveMusicConfigToFirebase();}
+async function saveMusicConfigToFirebase(){if(!fbClientId)return;try{await authReady;const config={radio:document.getElementById('radioUrl').value.trim(),musicfolder:driveMusicFolderId,sourceMode:curMode,adInt:document.getElementById('adInt').value,fadeDur:document.getElementById('fadeDur').value};await update(ref(fbDb,'clients/'+fbClientId),config);await shortenPlayerLinkAndSave();}catch(e){}}
+async function shortenPlayerLinkAndSave(){if(!fbClientId)return;try{generateClientLink();const longUrl=_lmUrl;const r=await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`);const data=await r.json();if(data.shorturl){_lmUrl=data.shorturl;document.getElementById('lmUrl').textContent=_lmUrl;await update(ref(fbDb,'clients/'+fbClientId),{shortUrl:data.shorturl});log('🔗 Link actualizado','ok');}}catch(e){}}
 function checkAdminCmds(){
   if(PARAMS.cid) return;
   const cmd=JSON.parse(localStorage.getItem('rbz_admin_cmd')||'{}');

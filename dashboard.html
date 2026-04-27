@@ -271,7 +271,7 @@ window.openAddModal = () => {
   editingId=null;
   document.getElementById('modalTitle').textContent='➕ Nuevo cliente';
   document.getElementById('saveClientBtn').textContent='💾 Guardar y generar link';
-  ['fName','fFolder','fRadio','fMusicFolder'].forEach(id=>document.getElementById(id).value='');
+  ['fName','fFolder'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fPin').value='1234';
   document.getElementById('fInt').value='10';
   document.getElementById('fFade').value='2';
@@ -288,32 +288,19 @@ window.openEditModal = id => {
   document.getElementById('saveClientBtn').textContent='💾 Actualizar cliente';
   document.getElementById('fName').value=c.name;
   document.getElementById('fFolder').value=c.folder;
-  document.getElementById('fRadio').value=c.radio||'';
-  document.getElementById('fMusicFolder').value=c.musicfolder||'';
   document.getElementById('fPin').value=c.pin;
   document.getElementById('fInt').value=c.intervalo;
   document.getElementById('fFade').value=c.fade||'2';
   document.getElementById('fEmoji').value=c.emoji||'🏪';
-  const src = c.sourceMode || (c.radio ? 'radio' : c.musicfolder ? 'drive' : 'local');
-  document.getElementById('fSourceMode').value = src;
-  onSourceModeChange();
   document.getElementById('clientModal').classList.add('show');
 };
 
 window.closeModal = () => document.getElementById('clientModal').classList.remove('show');
 
-window.onSourceModeChange = () => {
-  const src = document.getElementById('fSourceMode').value;
-  document.getElementById('fRadioRow').style.display       = src === 'radio' ? '' : 'none';
-  document.getElementById('fMusicFolderRow').style.display = src === 'drive' ? '' : 'none';
-};
 
 window.saveClient = async () => {
   const name=document.getElementById('fName').value.trim();
   const folder=document.getElementById('fFolder').value.trim();
-  const radio=document.getElementById('fRadio').value.trim();
-  const musicfolder=document.getElementById('fMusicFolder').value.trim();
-  const sourceMode=document.getElementById('fSourceMode').value;
   const pin=document.getElementById('fPin').value.trim()||'1234';
   const intervalo=document.getElementById('fInt').value;
   const fade=document.getElementById('fFade').value;
@@ -323,16 +310,14 @@ window.saveClient = async () => {
   if(!/^\d{4}$/.test(pin)){toast('El PIN debe ser 4 dígitos','error');return;}
   const match=folder.match(/folders\/([a-zA-Z0-9_-]+)/);
   const cleanFolder=match?match[1]:folder;
-  const mfMatch=musicfolder.match(/folders\/([a-zA-Z0-9_-]+)/);
-  const cleanMusicFolder=mfMatch?mfMatch[1]:musicfolder;
   try {
     if(editingId) {
-      await fbUpdate('clients/'+editingId, {name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji,sourceMode});
+      await fbUpdate('clients/'+editingId, {name,folder:cleanFolder,pin,intervalo,fade,emoji});
       toast('✅ '+name+' actualizado','success');
     } else {
       const id = 'c_'+Date.now();
       const code = generateCode();
-      await fbSet('clients/'+id, {id,name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji,sourceMode,code,blocked:false,createdAt:Date.now()});
+      await fbSet('clients/'+id, {id,name,folder:cleanFolder,pin,intervalo,fade,emoji,code,blocked:false,createdAt:Date.now()});
       toast('✅ '+name+' creado — generando link corto...','success');
       // Auto-generate short URL
       setTimeout(async () => {
@@ -1105,28 +1090,6 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
     <div class="form-grid">
       <div class="fg form-full"><label>Nombre del negocio *</label><input type="text" id="fName" placeholder="Ej: Farmacia San José"></div>
       <div class="fg form-full"><label>Folder ID de jingles en Drive *</label><input type="text" id="fFolder" placeholder="1aBcDeFgHiJkLmNoPqRs..."></div>
-      <div class="fg form-full" id="fMusicFolderRow"><label>Folder ID de música en Drive</label><input type="text" id="fMusicFolder" placeholder="ID carpeta con MP3 de música en Drive..."></div>
-      <div class="fg form-full">
-        <label>Fuente de música del cliente</label>
-        <select id="fSourceMode" onchange="onSourceModeChange()" style="width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:600;padding:9px 11px;outline:none;">
-          <option value="radio">📡 Radio — stream online (URL abajo)</option>
-          <option value="drive">☁️ Drive — carpeta de música en Drive</option>
-          <option value="local">📁 Local — el cliente sube sus propios MP3</option>
-        </select>
-      </div>
-      <div class="fg form-full" id="fRadioRow">
-        <label>Radio online (stream directo)</label>
-        <input type="url" id="fRadio" placeholder="https://ice1.somafm.com/groovesalad-256-mp3">
-        <div class="radio-presets">
-          <button class="rp" onclick="setRP('https://ice1.somafm.com/groovesalad-256-mp3')">🌱 Ambient</button>
-          <button class="rp" onclick="setRP('https://ice1.somafm.com/dronezone-256-mp3')">🌙 Chill</button>
-          <button class="rp" onclick="setRP('https://ice1.somafm.com/seventies-128-mp3')">🕺 70s</button>
-          <button class="rp" onclick="setRP('https://ice1.somafm.com/illstreet-128-mp3')">🎸 Rock</button>
-          <button class="rp" onclick="setRP('https://ice1.somafm.com/lush-128-mp3')">🌸 Suave</button>
-          <button class="rp" onclick="setRP('https://ice1.somafm.com/folkfwd-128-mp3')">🪕 Folk</button>
-          <button class="rp" onclick="setRP('')">🚫 Sin radio</button>
-        </div>
-      </div>
       <div class="fg"><label>PIN del cliente *</label><input type="text" id="fPin" placeholder="4 dígitos" maxlength="4" value="1234"></div>
       <div class="fg"><label>Intervalo anuncios</label><select id="fInt"><option value="1">1 min</option><option value="3">3 min</option><option value="5">5 min</option><option value="10" selected>10 min</option><option value="15">15 min</option><option value="20">20 min</option><option value="30">30 min</option></select></div>
       <div class="fg"><label>Fade in/out</label><select id="fFade"><option value="0">Sin fade</option><option value="1">1 seg</option><option value="2" selected>2 seg</option><option value="3">3 seg</option></select></div>
