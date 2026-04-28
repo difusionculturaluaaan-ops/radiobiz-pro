@@ -649,15 +649,8 @@ import { getDatabase, ref, get, set, update, remove, onValue, serverTimestamp }
 import { getAuth, signInAnonymously }
   from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDgE9XssX6VT1SxQuDzR-FOnq4S7FE3Zcw",
-  authDomain: "proradiobiz.firebaseapp.com",
-  databaseURL: "https://proradiobiz-default-rtdb.firebaseio.com",
-  projectId: "proradiobiz",
-  storageBucket: "proradiobiz.firebasestorage.app",
-  messagingSenderId: "601173283890",
-  appId: "1:601173283890:web:ee0af646f3b06e3878d82b"
-};
+const configRes = await fetch('/api/fb-config');
+const firebaseConfig = await configRes.json();
 const fbApp = initializeApp(firebaseConfig);
 const fbDb = getDatabase(fbApp);
 const fbAuth = getAuth(fbApp);
@@ -1329,9 +1322,15 @@ window.saveProgrammingConfig = async () => {
     btn.textContent = '⏳ Guardando...';
     btn.disabled = true;
 
+    // Si el modo es Drive, asigna el folder ID del input antes de guardar
+    if(curMode === 'drive') {
+      const inputFolder = document.getElementById('musicFolderId').value.trim();
+      if(inputFolder) driveMusicFolderId = inputFolder;
+    }
+
     const config = {
-      radio: document.getElementById('radioUrl').value.trim() || null,
-      musicfolder: driveMusicFolderId || null,
+      radio: (curMode === 'radio' ? document.getElementById('radioUrl').value.trim() : null) || null,
+      musicfolder: (curMode === 'drive' ? driveMusicFolderId : null) || null,
       sourceMode: curMode,
       intervalo: document.getElementById('adInt').value,
       fade: document.getElementById('fadeDur').value,
