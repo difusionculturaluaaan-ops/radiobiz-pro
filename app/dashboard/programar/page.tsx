@@ -80,7 +80,6 @@ export default function ProgramarPage() {
         folder: jingleFolder,
         intervalo: Number(intervalo),
         fade: Number(fade),
-        shortUrl: null, // Clear to regenerate
       };
 
       await fbUpdate(`clients/${selectedClient.id}`, config);
@@ -88,8 +87,22 @@ export default function ProgramarPage() {
 
       // Generate new link
       const updatedClient = { ...selectedClient, ...config } as Client;
-      const link = generateLink(updatedClient);
-      setGeneratedLink(link);
+      const fullLink = generateLink(updatedClient);
+
+      // Shorten link with is.gd
+      try {
+        const response = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(fullLink)}`);
+        const data = await response.json();
+        const shortUrl = data.shorturl || fullLink;
+
+        await fbUpdate(`clients/${selectedClient.id}`, { shortUrl });
+        setGeneratedLink(shortUrl);
+        showToast('🔗 Link acortado', 'success');
+      } catch (linkErr) {
+        console.error('Error shortening link:', linkErr);
+        setGeneratedLink(fullLink);
+        showToast('⚠️ Link sin acortar (error is.gd)', 'warning');
+      }
     } catch (err) {
       showToast('❌ Error al guardar', 'error');
       console.error(err);
