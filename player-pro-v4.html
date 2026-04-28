@@ -1347,6 +1347,9 @@ window.saveProgrammingConfig = async () => {
       btn.textContent = originalText;
       btn.disabled = false;
     }, 2000);
+
+    // Generar y mostrar el nuevo link con la configuración guardada
+    await generateClientLink();
   } catch(e) {
     log('❌ Error: '+e.message,'error');
     event.target.textContent = originalText;
