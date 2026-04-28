@@ -1,14 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { fbListen, fbUpdate, fbRemove, fbSet, generateCode, Client } from '@/lib/db';
 import ClientCard from '@/components/ClientCard';
 import ClientModal from '@/components/ClientModal';
 import styles from './clientes.module.css';
 
 export default function ClientesPage() {
-  const router = useRouter();
   const [clients, setClients] = useState<Record<string, Client>>({});
   const [sessions, setSessions] = useState<Record<string, { clientId: string }>>({});
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
@@ -87,12 +85,22 @@ export default function ClientesPage() {
     showToast(c.blocked ? '✅ Cliente activado' : '🚫 Cliente bloqueado', c.blocked ? 'success' : 'error');
   }
 
-  function handleProgram(id: string) {
-    router.push(`/dashboard/programar?id=${id}`);
-  }
-
   function getSessionCount(clientId: string): number {
     return Object.values(sessions).filter(s => s?.clientId === clientId).length;
+  }
+
+  async function handleShareWA(id: string) {
+    const c = clients[id];
+    if (!c) return;
+    const link = c.shortUrl || `https://radiobiz-pro.vercel.app/s/${id}`;
+    const msg = encodeURIComponent(
+      `🎵 *RadioBiz Pro* — Tu reproductor está listo!\n\n` +
+      `*Negocio:* ${c.name} ${c.emoji ?? ''}\n\n` +
+      `👆 Abre este link:\n${link}\n\n` +
+      `📌 PIN: *${c.pin}*\n\n` +
+      `_Powered by RadioBiz Pro_`
+    );
+    window.open('https://wa.me/?text=' + msg, '_blank');
   }
 
   async function handleRenewLink(id: string) {
@@ -176,7 +184,7 @@ export default function ClientesPage() {
               onEdit={() => { setEditingClient(c); setModalOpen(true); }}
               onDelete={() => handleDelete(c.id)}
               onToggleBlock={() => handleToggleBlock(c.id)}
-              onProgram={() => handleProgram(c.id)}
+              onShareWA={() => handleShareWA(c.id)}
               onRenewLink={() => handleRenewLink(c.id)}
             />
           ))}

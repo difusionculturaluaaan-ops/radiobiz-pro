@@ -10,11 +10,11 @@ interface Props {
   onEdit: () => void;
   onDelete: () => void;
   onToggleBlock: () => void;
-  onProgram: () => void;
+  onShareWA: () => void;
   onRenewLink: () => void;
 }
 
-export default function ClientCard({ client: c, index, sessionCount = 0, onEdit, onDelete, onToggleBlock, onProgram, onRenewLink }: Props) {
+export default function ClientCard({ client: c, index, sessionCount = 0, onEdit, onDelete, onToggleBlock, onShareWA, onRenewLink }: Props) {
   const isBlocked = c.blocked === true;
 
   return (
@@ -44,7 +44,7 @@ export default function ClientCard({ client: c, index, sessionCount = 0, onEdit,
 
       {/* Actions */}
       <div className={styles.actions}>
-        <button className={`${styles.actionBtn} ${styles.program}`} onClick={onProgram}>🎵 Programar</button>
+        <button className={`${styles.actionBtn} ${styles.wa}`} onClick={onShareWA}>💬 WA</button>
         <button className={`${styles.actionBtn} ${styles.renew}`} onClick={onRenewLink}>🔄 Renovar link</button>
         <button className={`${styles.actionBtn} ${styles.edit}`} onClick={onEdit}>✏️ Editar</button>
         <button className={`${styles.actionBtn} ${styles.del}`} onClick={onDelete}>🗑️</button>
