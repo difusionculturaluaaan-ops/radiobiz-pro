@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { fbListen, fbUpdate, generateLink, Client } from '@/lib/db';
+import { fbListen, fbUpdate, Client } from '@/lib/db';
 import styles from './programar.module.css';
 
 export default function ProgramarPage() {
@@ -11,7 +11,6 @@ export default function ProgramarPage() {
   const [clients, setClients] = useState<Record<string, Client>>({});
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('id'));
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
-  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Form state
@@ -45,7 +44,6 @@ export default function ProgramarPage() {
       setJingleFolder(selectedClient.folder || '');
       setIntervalo(String(selectedClient.intervalo || 10));
       setFade(String(selectedClient.fade || 2));
-      setGeneratedLink(null);
     }
   }, [selectedClient]);
 
@@ -79,25 +77,6 @@ export default function ProgramarPage() {
 
       await fbUpdate(`clients/${selectedClient.id}`, config);
       showToast('✅ Programación guardada', 'success');
-
-      // Generate new link
-      const updatedClient = { ...selectedClient, ...config } as Client;
-      const fullLink = generateLink(updatedClient);
-
-      // Shorten link with is.gd
-      try {
-        const response = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(fullLink)}`);
-        const data = await response.json();
-        const shortUrl = data.shorturl || fullLink;
-
-        await fbUpdate(`clients/${selectedClient.id}`, { shortUrl });
-        setGeneratedLink(shortUrl);
-        showToast('🔗 Link acortado', 'success');
-      } catch (linkErr) {
-        console.error('Error shortening link:', linkErr);
-        setGeneratedLink(fullLink);
-        showToast('⚠️ Link sin acortar (error is.gd)', 'warning');
-      }
     } catch (err) {
       showToast('❌ Error al guardar', 'error');
       console.error(err);
@@ -106,13 +85,6 @@ export default function ProgramarPage() {
     }
   };
 
-  const copyLink = () => {
-    if (generatedLink) {
-      navigator.clipboard.writeText(generatedLink).then(() => {
-        showToast('📋 Link copiado', 'success');
-      });
-    }
-  };
 
   return (
     <div>
@@ -384,42 +356,6 @@ export default function ProgramarPage() {
                 {isSaving ? '⏳ Guardando...' : '💾 Guardar programación'}
               </button>
 
-              {/* Generated Link */}
-              {generatedLink && (
-                <div style={{ background: 'rgba(240, 192, 64, 0.1)', border: '1px solid rgba(240, 192, 64, 0.3)', borderRadius: '10px', padding: '16px' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text2)', marginBottom: '8px' }}>Link del cliente:</div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-jetbrains-mono)',
-                      fontSize: '0.75rem',
-                      color: 'var(--accent)',
-                      wordBreak: 'break-all',
-                      marginBottom: '12px',
-                      background: 'rgba(0, 0, 0, 0.2)',
-                      padding: '8px',
-                      borderRadius: '6px',
-                    }}
-                  >
-                    {generatedLink}
-                  </div>
-                  <button
-                    onClick={copyLink}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      background: 'var(--accent)',
-                      border: 'none',
-                      borderRadius: '6px',
-                      color: 'white',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontFamily: 'var(--font-syne)',
-                    }}
-                  >
-                    📋 Copiar link
-                  </button>
-                </div>
-              )}
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text2)' }}>
