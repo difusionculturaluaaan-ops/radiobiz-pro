@@ -1,10 +1,16 @@
 'use client';
 
-import { AuthProvider } from '@/lib/auth-context';
+// This is a Client Component — dynamic with ssr:false is ALLOWED here
+// (it's only forbidden in Server Components)
+import dynamic from 'next/dynamic';
 
-// Client-side wrapper for AuthProvider
-// This component is a Client Component, so Firebase initialization
-// happens only in the browser — never during SSR/build.
-export default function ClientProviders({ children }: { children: React.ReactNode }) {
+// AuthProvider imports Firebase, which must NEVER run during SSR.
+// dynamic + ssr:false guarantees it's only loaded in the browser.
+const AuthProvider = dynamic(
+  () => import('@/lib/auth-context').then((m) => m.AuthProvider),
+  { ssr: false, loading: () => null }
+);
+
+export default function Providers({ children }: { children: React.ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>;
 }
