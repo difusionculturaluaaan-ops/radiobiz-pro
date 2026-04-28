@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Syne, Outfit, JetBrains_Mono } from "next/font/google";
+import { AuthProvider } from "@/lib/auth-context";
 import "./globals.css";
 
 const syne = Syne({ 
@@ -32,10 +33,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${syne.variable} ${outfit.variable} ${jetbrainsMono.variable} font-outfit`}>
-        {/* Animated Mesh Gradient Background applied globally */}
+      <body className={`${syne.variable} ${outfit.variable} ${jetbrainsMono.variable}`}>
         <div className="mesh-bg"></div>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
