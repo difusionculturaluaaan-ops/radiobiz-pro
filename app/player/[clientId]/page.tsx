@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { fbGet, fbUpdate, Client, generateLink } from '@/lib/db';
+import { fbGet, fbUpdate, fbListen, Client, generateLink } from '@/lib/db';
+import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import PinScreen from '@/components/player/PinScreen';
+import PlayerCard from '@/components/player/PlayerCard';
 import styles from './player.module.css';
 
 type View = 'setup' | 'player';
@@ -21,6 +23,87 @@ const SOURCE_LABELS: Record<SourceMode, string> = {
   radio: '📡 Radio Online',
   local: '🎵 Local',
 };
+
+/* ── Sub-component: Active Player ── */
+function ActivePlayer({ client, onBlocked }: { client: Client; onBlocked: () => void }) {
+  const audioPlayer = useAudioPlayer(client);
+
+  useEffect(() => {
+    const sessionIdRef = { current: `s_${client.id}_${Date.now()}` };
+
+    // Register session
+    (async () => {
+      const { fbSet } = await import('@/lib/db');
+      await fbSet(`sessions/${sessionIdRef.current}`, {
+        clientId: client.id,
+        lastPing: Date.now(),
+      });
+    })();
+
+    // Ping every 90 seconds
+    const pingInterval = setInterval(async () => {
+      const { fbSet } = await import('@/lib/db');
+      if (sessionIdRef.current) {
+        await fbSet(`sessions/${sessionIdRef.current}`, {
+          clientId: client.id,
+          lastPing: Date.now(),
+        });
+      }
+    }, 90 * 1000);
+
+    // Listen for block changes
+    const unsubBlocked = fbListen(`clients/${client.id}`, (updatedClient: any) => {
+      if (updatedClient && updatedClient.blocked) {
+        onBlocked();
+      }
+    });
+
+    // Cleanup
+    return () => {
+      clearInterval(pingInterval);
+      unsubBlocked();
+      (async () => {
+        const { fbRemove } = await import('@/lib/db');
+        if (sessionIdRef.current) {
+          await fbRemove(`sessions/${sessionIdRef.current}`);
+        }
+      })();
+    };
+  }, [client, onBlocked]);
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.main}>
+        {/* Header */}
+        <div className={styles.header}>
+          <div style={{ fontSize: '2rem' }}>{client.emoji || '🏪'}</div>
+          <h1 className={styles.clientName}>{client.name}</h1>
+          <p className={styles.subtitle}>Gestionado por RadioBiz Pro</p>
+        </div>
+
+        {/* Player Card */}
+        <PlayerCard
+          playing={audioPlayer.playing}
+          onPlayPause={audioPlayer.handlePlayPause}
+          currentTrack={audioPlayer.currentTrack}
+          progress={audioPlayer.progress}
+          onProgressChange={audioPlayer.setProgress}
+          volume={audioPlayer.volume}
+          onVolumeChange={audioPlayer.setVolume}
+          nextAdSecs={audioPlayer.nextAdSecs}
+        />
+
+        {/* Audio elements */}
+        <audio ref={audioPlayer.musicRef} onTimeUpdate={audioPlayer.handleTimeUpdate} crossOrigin="anonymous" />
+        <audio ref={audioPlayer.adRef} onEnded={audioPlayer.onAdEnd} crossOrigin="anonymous" />
+
+        <p style={{ fontSize: '0.7rem', color: 'var(--text2)', textAlign: 'center' }}>
+          Powered by RadioBiz Pro
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function PlayerPage() {
   const params = useParams();
@@ -323,6 +406,11 @@ export default function PlayerPage() {
   }
 
   /* ── Vista B: Player activo ── */
+  if (view === 'player' && client && pinAuthenticated) {
+    return <ActivePlayer client={client} onBlocked={() => { setError('Servicio suspendido. Contacta a RadioBiz Pro.'); setPinAuthenticated(false); }} />;
+  }
+
+  /* ── Setup view fallback ── */
   const sourceLabel = client?.sourceMode ? SOURCE_LABELS[client.sourceMode] : '—';
   const sourceDetail = client?.sourceMode === 'radio'
     ? client.radio

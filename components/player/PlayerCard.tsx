@@ -11,6 +11,7 @@ interface PlayerCardProps {
   onProgressChange: (value: number) => void;
   volume: number;
   onVolumeChange: (value: number) => void;
+  nextAdSecs?: number;
 }
 
 export default function PlayerCard({
@@ -21,6 +22,7 @@ export default function PlayerCard({
   onProgressChange,
   volume,
   onVolumeChange,
+  nextAdSecs = 0,
 }: PlayerCardProps) {
   const [isRotating, setIsRotating] = useState(false);
 
@@ -91,7 +93,9 @@ export default function PlayerCard({
       {/* Next Spot Info */}
       <div className={styles.nextSpot}>
         <div style={{ fontSize: '0.7rem', color: 'var(--text2)' }}>📢 PRÓXIMO ANUNCIO</div>
-        <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>00:32 seg</div>
+        <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+          {String(Math.floor(nextAdSecs / 60)).padStart(2, '0')}:{String(nextAdSecs % 60).padStart(2, '0')} seg
+        </div>
       </div>
     </div>
   );
