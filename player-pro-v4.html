@@ -1334,7 +1334,7 @@ function checkAdminCmds(){
 // ═══════════════════════════════════════════
 let _lmUrl = '';
 
-function generateClientLink() {
+async function generateClientLink() {
   const base = window.location.origin + '/player-pro-v4.html';
   const p = new URLSearchParams();
 
@@ -1369,12 +1369,25 @@ function generateClientLink() {
     srcLabel = '☁️ Drive Music — ' + driveMusicFolderId.substring(0, 12) + '...';
   }
 
-  _lmUrl = base + '?' + p.toString();
+  const longUrl = base + '?' + p.toString();
+  _lmUrl = longUrl;
 
-  document.getElementById('lmUrl').textContent    = _lmUrl;
+  document.getElementById('lmUrl').textContent    = '⏳ Acortando...';
   document.getElementById('lmSrcTxt').textContent = srcLabel;
   document.getElementById('lmIntTxt').textContent = 'Cada ' + document.getElementById('adInt').value + ' min';
   document.getElementById('linkModal').classList.add('show');
+
+  // Acortar con is.gd
+  try {
+    const r = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`);
+    const data = await r.json();
+    if(data.shorturl) {
+      _lmUrl = data.shorturl;
+      if(fbClientId) await update(ref(fbDb,'clients/'+fbClientId),{shortUrl:data.shorturl});
+    }
+  } catch(e) { log('⚠ Error acortando link','error'); }
+
+  document.getElementById('lmUrl').textContent = _lmUrl;
 }
 
 function closeLinkModal() { document.getElementById('linkModal').classList.remove('show'); }
