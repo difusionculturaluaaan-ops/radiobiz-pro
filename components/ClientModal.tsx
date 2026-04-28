@@ -18,11 +18,13 @@ export default function ClientModal({ client, onSave, onClose }: Props) {
   const [emoji, setEmoji] = useState(client?.emoji ?? '🏪');
   const [plan, setPlan] = useState(client?.plan ?? 'Estándar');
   const [monto, setMonto] = useState(String(client?.monto ?? 499));
+  const [folder, setFolder] = useState(client?.folder ?? '');
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    onSave({ name: name.trim(), pin, emoji, plan, monto: Number(monto), folder: client?.folder || '' });
+    if (!folder.trim()) return;
+    onSave({ name: name.trim(), pin, emoji, plan, monto: Number(monto), folder: folder.trim() });
   }
 
   return (
@@ -64,6 +66,24 @@ export default function ClientModal({ client, onSave, onClose }: Props) {
             <div className={styles.field}>
               <label>Monto (MXN)</label>
               <input type="number" value={monto} onChange={e => setMonto(e.target.value)} min={0} />
+            </div>
+
+            {/* Folder de spots — obligatorio */}
+            <div className={`${styles.field} ${styles.full}`}>
+              <label>
+                🎵 Folder ID de spots (Google Drive)
+                <span style={{ color: 'var(--red)', marginLeft: '4px' }}>*</span>
+              </label>
+              <input
+                value={folder}
+                onChange={e => setFolder(e.target.value)}
+                placeholder="1aBcDeFgHiJkLmNoPqRs..."
+                required
+                style={{ fontFamily: 'var(--font-jetbrains-mono)', fontSize: '0.8rem' }}
+              />
+              <p style={{ fontSize: '0.7rem', color: 'var(--text2)', margin: '4px 0 0' }}>
+                Folder de Google Drive que contiene los spots/jingles del cliente.
+              </p>
             </div>
           </div>
 
