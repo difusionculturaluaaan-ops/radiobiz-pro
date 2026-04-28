@@ -1,6 +1,6 @@
 'use client';
 
-import { Client, generateLink } from '@/lib/db';
+import { Client } from '@/lib/db';
 import styles from './ClientCard.module.css';
 
 interface Props {
@@ -9,13 +9,12 @@ interface Props {
   onEdit: () => void;
   onDelete: () => void;
   onToggleBlock: () => void;
-  onCopyLink: () => void;
+  onProgram: () => void;
   onShareWA: () => void;
 }
 
-export default function ClientCard({ client: c, index, onEdit, onDelete, onToggleBlock, onCopyLink, onShareWA }: Props) {
+export default function ClientCard({ client: c, index, onEdit, onDelete, onToggleBlock, onProgram, onShareWA }: Props) {
   const isBlocked = c.blocked === true;
-  const displayLink = c.shortUrl ?? generateLink(c);
 
   return (
     <div
@@ -42,15 +41,9 @@ export default function ClientCard({ client: c, index, onEdit, onDelete, onToggl
         </button>
       </div>
 
-      {/* Link */}
-      <div className={styles.linkBar} onClick={onCopyLink} title="Clic para copiar">
-        <span className={styles.linkText}>{displayLink}</span>
-        <span className={styles.linkIcon}>📋</span>
-      </div>
-
       {/* Actions */}
       <div className={styles.actions}>
-        <button className={`${styles.actionBtn} ${styles.copy}`} onClick={onCopyLink}>📋 Copiar</button>
+        <button className={`${styles.actionBtn} ${styles.program}`} onClick={onProgram}>🎵 Programar</button>
         <button className={`${styles.actionBtn} ${styles.wa}`} onClick={onShareWA}>💬 WA</button>
         <button className={`${styles.actionBtn} ${styles.edit}`} onClick={onEdit}>✏️ Editar</button>
         <button className={`${styles.actionBtn} ${styles.del}`} onClick={onDelete}>🗑️</button>

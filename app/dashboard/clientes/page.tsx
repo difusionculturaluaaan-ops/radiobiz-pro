@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { fbListen, fbUpdate, fbRemove, fbSet, generateCode, generateLink, Client } from '@/lib/db';
+import { useRouter } from 'next/navigation';
+import { fbListen, fbUpdate, fbRemove, fbSet, generateCode, Client } from '@/lib/db';
 import ClientCard from '@/components/ClientCard';
 import ClientModal from '@/components/ClientModal';
 import styles from './clientes.module.css';
 
 export default function ClientesPage() {
+  const router = useRouter();
   const [clients, setClients] = useState<Record<string, Client>>({});
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -27,20 +29,32 @@ export default function ClientesPage() {
   async function handleSave(data: Partial<Client>) {
     try {
       if (editingClient) {
-        await fbUpdate('clients/' + editingClient.id, data);
+        await fbUpdate('clients/' + editingClient.id, {
+          name: data.name,
+          pin: data.pin,
+          emoji: data.emoji,
+          plan: data.plan,
+          monto: data.monto,
+        });
         showToast(`✅ ${data.name} actualizado`, 'success');
       } else {
         const id = 'c_' + Date.now();
         const code = generateCode();
         const newClient: Client = {
-          id, code, blocked: false, createdAt: Date.now(),
-          name: data.name!, folder: data.folder!, pin: data.pin!,
-          intervalo: Number(data.intervalo), fade: Number(data.fade ?? 2),
-          emoji: data.emoji ?? '🏪', radio: data.radio, musicfolder: data.musicfolder,
-          sourceMode: data.sourceMode,
+          id,
+          code,
+          blocked: false,
+          createdAt: Date.now(),
+          name: data.name!,
+          folder: data.folder || '',
+          pin: data.pin!,
+          intervalo: 10,
+          fade: 2,
+          emoji: data.emoji ?? '🏪',
+          plan: data.plan ?? 'Estándar',
+          monto: data.monto ?? 499,
         };
         await fbSet('clients/' + id, newClient);
-        // Auto-generate short URL
         const shortUrl = `https://radiobiz-pro.vercel.app/s/${id}`;
         await fbUpdate('clients/' + id, { shortUrl });
         showToast(`✅ ${data.name} creado`, 'success');
@@ -65,12 +79,8 @@ export default function ClientesPage() {
     showToast(c.blocked ? '✅ Cliente activado' : '🚫 Cliente bloqueado', c.blocked ? 'success' : 'error');
   }
 
-  async function handleCopyLink(id: string) {
-    const c = clients[id]; if (!c) return;
-    if (c.blocked) { showToast('Cliente bloqueado — actívalo primero', 'error'); return; }
-    const link = c.shortUrl ?? generateLink(c);
-    await navigator.clipboard.writeText(link);
-    showToast('📋 Link copiado: ' + c.name, 'success');
+  function handleProgram(id: string) {
+    router.push(`/dashboard/programar?id=${id}`);
   }
 
   async function handleShareWA(id: string) {
@@ -135,7 +145,7 @@ export default function ClientesPage() {
               onEdit={() => { setEditingClient(c); setModalOpen(true); }}
               onDelete={() => handleDelete(c.id)}
               onToggleBlock={() => handleToggleBlock(c.id)}
-              onCopyLink={() => handleCopyLink(c.id)}
+              onProgram={() => handleProgram(c.id)}
               onShareWA={() => handleShareWA(c.id)}
             />
           ))}

@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { fbListen, fbUpdate, generateLink, Client } from '@/lib/db';
 import styles from './programar.module.css';
 
 export default function ProgramarPage() {
+  const searchParams = useSearchParams();
   const [clients, setClients] = useState<Record<string, Client>>({});
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('id'));
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
