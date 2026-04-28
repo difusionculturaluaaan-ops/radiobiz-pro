@@ -12,6 +12,10 @@
     {
       "src": "/dashboard",
       "dest": "/dashboard.html"
+    },
+    {
+      "src": "/s/(.*)",
+      "dest": "/api/short?id=$1"
     }
   ],
   "headers": [

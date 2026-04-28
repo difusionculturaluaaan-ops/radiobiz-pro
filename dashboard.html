@@ -14,15 +14,9 @@ import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
 // ═══ FIREBASE CONFIG ═══
-const firebaseConfig = {
-  apiKey: "AIzaSyDgE9XssX6VT1SxQuDzR-FOnq4S7FE3Zcw",
-  authDomain: "proradiobiz.firebaseapp.com",
-  databaseURL: "https://proradiobiz-default-rtdb.firebaseio.com",
-  projectId: "proradiobiz",
-  storageBucket: "proradiobiz.firebasestorage.app",
-  messagingSenderId: "601173283890",
-  appId: "1:601173283890:web:ee0af646f3b06e3878d82b"
-};
+const configRes = await fetch('/api/fb-config');
+const firebaseConfig = await configRes.json();
+
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -381,18 +375,13 @@ const shortUrlCache = {};
 async function getShortUrl(id) {
   if(shortUrlCache[id]) return shortUrlCache[id];
   const c = clients[id]; if(!c) return generateLink(c);
-  const long = generateLink(c);
-  try {
-    const r = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(long)}`);
-    const data = await r.json();
-    if(data.shorturl) {
-      shortUrlCache[id] = data.shorturl;
-      // Save to Firebase for persistence
-      await fbUpdate('clients/'+id, { shortUrl: data.shorturl });
-      return data.shorturl;
-    }
-  } catch(e) { /* fallback to long URL */ }
-  return long;
+  
+  // Custom short URL
+  const customShortUrl = window.location.origin + '/s/' + id;
+  
+  shortUrlCache[id] = customShortUrl;
+  await fbUpdate('clients/'+id, { shortUrl: customShortUrl });
+  return customShortUrl;
 }
 
 // ═══ SHARE ═══
@@ -662,6 +651,41 @@ window.clearAllData = async () => {
   if(!confirm('¿Eliminar TODOS los clientes? No se puede deshacer.'))return;
   await fbRemove('clients');
   toast('Todos los clientes eliminados');
+};
+
+window.exportarCSV = () => {
+  const list = Object.values(clients);
+  if(!list.length) { toast('No hay clientes para exportar', 'error'); return; }
+  
+  const headers = ['ID', 'Nombre', 'Plan', 'Monto', 'Intervalo (min)', 'PIN', 'Folder ID', 'Estado', 'Último Pago', 'URL Corta'];
+  const rows = list.map(c => {
+    const pagos = c.pagos || [];
+    const ultimoPago = pagos.length ? new Date(pagos[pagos.length-1].fecha).toLocaleDateString('es-MX') : 'Sin pagos';
+    const estado = c.blocked ? 'Bloqueado' : 'Activo';
+    return [
+      c.id,
+      `"${(c.name||'').replace(/"/g, '""')}"`,
+      c.plan || 'Estándar',
+      c.monto || 499,
+      c.intervalo,
+      c.pin,
+      c.folder,
+      estado,
+      ultimoPago,
+      c.shortUrl || ''
+    ].join(',');
+  });
+  
+  const csvContent = headers.join(',') + '\n' + rows.join('\n');
+  const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `radiobiz_backup_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast('📥 Backup exportado exitosamente', 'success');
 };
 
 // ═══ LOG ═══
@@ -990,7 +1014,10 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
     <div class="page" id="page-clients">
       <div class="page-header">
         <div><h1>Clientes</h1><p>Gestiona todos tus negocios</p></div>
-        <button class="btn primary" onclick="openAddModal()">+ Nuevo cliente</button>
+        <div style="display:flex;gap:10px;">
+          <button class="btn secondary" onclick="exportarCSV()">📥 Exportar Backup (CSV)</button>
+          <button class="btn primary" onclick="openAddModal()">+ Nuevo cliente</button>
+        </div>
       </div>
       <div class="clients-grid" id="allClients"></div>
     </div>
