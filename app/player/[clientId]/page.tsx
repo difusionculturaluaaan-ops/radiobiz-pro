@@ -6,6 +6,7 @@ import { fbGet, fbUpdate, fbListen, Client, generateLink } from '@/lib/db';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import PinScreen from '@/components/player/PinScreen';
 import PlayerCard from '@/components/player/PlayerCard';
+import PlayerStats from '@/components/player/PlayerStats';
 import styles from './player.module.css';
 
 type View = 'setup' | 'player';
@@ -91,6 +92,16 @@ function ActivePlayer({ client, onBlocked }: { client: Client; onBlocked: () => 
           volume={audioPlayer.volume}
           onVolumeChange={audioPlayer.setVolume}
           nextAdSecs={audioPlayer.nextAdSecs}
+        />
+
+        {/* Stats & Source Control */}
+        <PlayerStats
+          spotCount={audioPlayer.spotCount}
+          currentSourceMode={audioPlayer.currentSourceMode}
+          onSourceChange={audioPlayer.changeSourceMode}
+          onLocalFilesSelect={audioPlayer.handleLocalFiles}
+          hasRadio={!!client.radio}
+          hasDrive={!!client.musicfolder}
         />
 
         {/* Audio elements */}

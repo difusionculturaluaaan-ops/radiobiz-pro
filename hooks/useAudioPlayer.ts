@@ -26,6 +26,31 @@ export function useAudioPlayer(client: Client) {
   const [progress, setProgress] = useState(0);
   const [nextAdSecs, setNextAdSecs] = useState(0);
   const [jingles, setJingles] = useState<DriveFile[]>([]);
+  const [spotCount, setSpotCount] = useState(0);
+  const [localFiles, setLocalFiles] = useState<{ name: string; url: string }[]>([]);
+  const [currentSourceMode, setCurrentSourceMode] = useState<'radio' | 'drive' | 'local'>(client.sourceMode || 'drive');
+
+  // Incrementar contador de spots
+  const incrementSpotCount = () => {
+    setSpotCount(prev => prev + 1);
+  };
+
+  // Manejar carga de archivos locales
+  const handleLocalFiles = (files: FileList) => {
+    const audioFiles = Array.from(files)
+      .filter(f => f.type.startsWith('audio/') || /\.(mp3|wav|m4a|ogg|flac|aac)$/i.test(f.name))
+      .map(f => ({ name: f.name, url: URL.createObjectURL(f) }));
+    setLocalFiles(prev => [...prev, ...audioFiles]);
+  };
+
+  // Cambiar fuente de música
+  const changeSourceMode = (mode: 'radio' | 'drive' | 'local') => {
+    setCurrentSourceMode(mode);
+    if (playing) {
+      musicRef.current?.pause();
+      setPlaying(false);
+    }
+  };
 
   // Sincronizar jingles desde Google Drive
   const syncJingles = async () => {
@@ -46,10 +71,10 @@ export function useAudioPlayer(client: Client) {
     if (!musicRef.current) return;
 
     try {
-      if (client.sourceMode === 'radio' && client.radio) {
+      if (currentSourceMode === 'radio' && client.radio) {
         musicRef.current.src = client.radio;
         musicRef.current.load();
-      } else if (client.sourceMode === 'drive' && client.musicfolder) {
+      } else if (currentSourceMode === 'drive' && client.musicfolder) {
         const res = await fetch(`/api/drive/${client.musicfolder}`);
         const data = await res.json();
         if (data.files && data.files.length > 0) {
@@ -58,6 +83,11 @@ export function useAudioPlayer(client: Client) {
           musicRef.current.load();
           setCurrentTrack({ name: file.name, duration: '0:00' });
         }
+      } else if (currentSourceMode === 'local' && localFiles.length > 0) {
+        const file = localFiles[Math.floor(Math.random() * localFiles.length)];
+        musicRef.current.src = file.url;
+        musicRef.current.load();
+        setCurrentTrack({ name: file.name, duration: '0:00' });
       }
     } catch (err) {
       console.error('Error loading music:', err);
@@ -149,6 +179,7 @@ export function useAudioPlayer(client: Client) {
 
   const onAdEnd = () => {
     setAdPlaying(false);
+    incrementSpotCount();
     if (musicRef.current && playing) {
       musicRef.current.play().catch(err => console.error('Error resuming music:', err));
       fadeIn();
@@ -286,6 +317,13 @@ export function useAudioPlayer(client: Client) {
     syncJingles();
   }, [client.folder]);
 
+  // Recargar música cuando cambia la fuente
+  useEffect(() => {
+    if (playing) {
+      loadMusic();
+    }
+  }, [currentSourceMode, localFiles]);
+
   // Time update handler
   const handleTimeUpdate = () => {
     if (musicRef.current) {
@@ -305,10 +343,15 @@ export function useAudioPlayer(client: Client) {
     progress,
     nextAdSecs,
     jingles,
+    spotCount,
+    localFiles,
+    currentSourceMode,
     setVolume,
     handlePlayPause,
     setProgress,
     handleTimeUpdate,
     onAdEnd,
+    handleLocalFiles,
+    changeSourceMode,
   };
 }
