@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Allow the old /api/ Vercel functions to coexist with Next.js Route Handlers
+  // during the transition period
 };
 
 export default nextConfig;

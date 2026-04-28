@@ -1,26 +1,8 @@
 {
   "version": 2,
-  "routes": [
-    {
-      "src": "/",
-      "dest": "/dashboard.html"
-    },
-    {
-      "src": "/player",
-      "dest": "/player-pro-v4.html"
-    },
-    {
-      "src": "/dashboard",
-      "dest": "/dashboard.html"
-    },
-    {
-      "src": "/s/(.*)",
-      "dest": "/api/short?id=$1"
-    }
-  ],
   "headers": [
     {
-      "source": "/dashboard.html",
+      "source": "/dashboard",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
@@ -28,9 +10,10 @@
       ]
     },
     {
-      "source": "/player-pro-v4.html",
+      "source": "/dashboard.html",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     },
