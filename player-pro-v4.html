@@ -489,24 +489,6 @@ body.presentacion .op-only{display:none!important;}
         </div>
       </div>
 
-      <!-- LOCAL MUSIC UPLOAD — siempre visible, incluso en modo bloqueado -->
-      <div class="local-music-card">
-        <div class="sl">📁 Tu música</div>
-        <label class="upload-zone" for="localFileInput">
-          <span class="uz-icon">📂</span>
-          <div>
-            <span class="uz-text">Seleccionar carpeta o archivos MP3</span>
-            <span class="uz-sub">MP3 · WAV · M4A — haz clic o arrastra</span>
-          </div>
-        </label>
-        <input type="file" id="localFileInput" accept="audio/*" multiple style="display:none"
-               onchange="handleLocalUpload(this)">
-        <div class="local-info" id="localMusicInfo" style="display:none;">
-          <span id="localMusicCount">0 archivos</span>
-          <button onclick="clearLocalMusic()">✕ Limpiar</button>
-        </div>
-      </div>
-
       <!-- SETTINGS -->
       <div class="settings-card" id="settingsCard">
         <div class="sl">⚙️ Configuración <span id="lockIcon" style="font-size:.7rem;"></span></div>
