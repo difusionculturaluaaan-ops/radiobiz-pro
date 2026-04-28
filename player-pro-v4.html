@@ -544,6 +544,9 @@ body.presentacion .op-only{display:none!important;}
           <div class="si hide-kiosk" id="pinSaveRow" style="display:flex;align-items:flex-end;">
             <button class="btn-s a" onclick="changePin()" style="width:100%;">💾 Guardar PIN</button>
           </div>
+          <div class="si hide-kiosk" style="display:flex;align-items:flex-end;margin-top:12px;">
+            <button class="btn-s" onclick="saveProgrammingConfig()" style="width:100%;background:var(--accent);color:white;font-weight:700;">💾 Guardar programación</button>
+          </div>
         </div>
       </div>
 
@@ -1317,6 +1320,39 @@ function onAdEnd(){
 function setStatus(cls,txt){const p=document.getElementById('statusPill');p.className='pill'+(cls?' '+cls:'');document.getElementById('statusTxt').textContent=txt;}
 function loadConfig(){const c=JSON.parse(localStorage.getItem('rbz_cfg')||'{}');if(!PARAMS.intervalo&&c.adInt){document.getElementById('adInt').value=c.adInt;adIntervalMs=c.adInt*60000;}if(c.volM){document.getElementById('volM').value=c.volM;document.getElementById('vMv').textContent=c.volM+'%';musicAudio.volume=c.volM/100;}if(c.volA){document.getElementById('volA').value=c.volA;document.getElementById('vAv').textContent=c.volA+'%';adAudio.volume=c.volA/100;}if(!PARAMS.fade&&c.fadeDur)document.getElementById('fadeDur').value=c.fadeDur;}
 function saveConfig(){localStorage.setItem('rbz_cfg',JSON.stringify({adInt:document.getElementById('adInt').value,volM:document.getElementById('volM').value,volA:document.getElementById('volA').value,fadeDur:document.getElementById('fadeDur').value}));saveMusicConfigToFirebase();}
+
+window.saveProgrammingConfig = async () => {
+  if(!fbClientId) { log('⚠ Sin cliente ID','error'); return; }
+  try {
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '⏳ Guardando...';
+    btn.disabled = true;
+
+    const config = {
+      radio: document.getElementById('radioUrl').value.trim() || null,
+      musicfolder: driveMusicFolderId || null,
+      sourceMode: curMode,
+      intervalo: document.getElementById('adInt').value,
+      fade: document.getElementById('fadeDur').value,
+      shortUrl: null
+    };
+
+    await authReady;
+    await update(ref(fbDb,'clients/'+fbClientId), config);
+    log('💾 Programación guardada','ok');
+
+    btn.textContent = '✅ Guardado';
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }, 2000);
+  } catch(e) {
+    log('❌ Error: '+e.message,'error');
+    event.target.textContent = originalText;
+    event.target.disabled = false;
+  }
+};
 async function saveMusicConfigToFirebase(){if(!fbClientId)return;try{await authReady;const config={radio:document.getElementById('radioUrl').value.trim(),musicfolder:driveMusicFolderId,sourceMode:curMode,adInt:document.getElementById('adInt').value,fadeDur:document.getElementById('fadeDur').value};await update(ref(fbDb,'clients/'+fbClientId),config);await shortenPlayerLinkAndSave();}catch(e){}}
 async function shortenPlayerLinkAndSave(){if(!fbClientId)return;try{generateClientLink();const longUrl=_lmUrl;const r=await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`);const data=await r.json();if(data.shorturl){_lmUrl=data.shorturl;document.getElementById('lmUrl').textContent=_lmUrl;await update(ref(fbDb,'clients/'+fbClientId),{shortUrl:data.shorturl});log('🔗 Link actualizado','ok');}}catch(e){}}
 function checkAdminCmds(){
