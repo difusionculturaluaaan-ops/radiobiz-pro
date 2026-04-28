@@ -1041,10 +1041,9 @@ function switchTab(t){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.getElementById('panel-'+t).classList.add('on');
   if(t==='drive' && driveMusicFolderId) loadDriveMusic();
-  saveMusicConfigToFirebase();
 }
 function setPreset(url,name){document.getElementById('radioUrl').value=url;loadRadio(name);}
-function loadRadio(name){const url=document.getElementById('radioUrl').value.trim();if(!url)return;musicAudio.src=url;document.getElementById('trackName').textContent=name||'Radio Online';document.getElementById('trackSrc').textContent='Stream en línea';curMode='radio';log('📡 Radio: '+(name||url),'ok');saveMusicConfigToFirebase();}
+function loadRadio(name){const url=document.getElementById('radioUrl').value.trim();if(!url)return;musicAudio.src=url;document.getElementById('trackName').textContent=name||'Radio Online';document.getElementById('trackSrc').textContent='Stream en línea';curMode='radio';log('📡 Radio: '+(name||url),'ok');}
 
 // ═══════════════════════════════════════════
 // DRIVE MUSIC PLAYLIST
@@ -1069,7 +1068,6 @@ async function loadDriveMusic(folderId) {
     applyDriveMusicOrder();
     localStorage.setItem('rbz_music_folder', id);
     log('☁️ Playlist Drive: ' + files.length + ' canciones', 'drive');
-    saveMusicConfigToFirebase();
   } catch(e) {
     document.getElementById('driveMusicList').innerHTML = `<div style="text-align:center;color:var(--warn);font-family:'JetBrains Mono',monospace;font-size:.66rem;padding:12px 0;">Error: ${e.message}</div>`;
     log('⚠ Error cargando música de Drive: ' + e.message);
