@@ -1322,16 +1322,24 @@ window.saveProgrammingConfig = async () => {
     btn.textContent = '⏳ Guardando...';
     btn.disabled = true;
 
-    // Si el modo es Drive, asigna el folder ID del input antes de guardar
-    if(curMode === 'drive') {
-      const inputFolder = document.getElementById('musicFolderId').value.trim();
-      if(inputFolder) driveMusicFolderId = inputFolder;
+    // Detecta el modo de música seleccionado en los tabs
+    let selectedMode = 'mp3';
+    const radioInput = document.getElementById('radioUrl').value.trim();
+    const driveInput = document.getElementById('musicFolderId').value.trim();
+
+    if(radioInput) {
+      selectedMode = 'radio';
+      curMode = 'radio';
+    } else if(driveInput) {
+      selectedMode = 'drive';
+      curMode = 'drive';
+      driveMusicFolderId = driveInput;
     }
 
     const config = {
-      radio: (curMode === 'radio' ? document.getElementById('radioUrl').value.trim() : null) || null,
-      musicfolder: (curMode === 'drive' ? driveMusicFolderId : null) || null,
-      sourceMode: curMode,
+      radio: (selectedMode === 'radio' ? radioInput : null) || null,
+      musicfolder: (selectedMode === 'drive' ? driveMusicFolderId : null) || null,
+      sourceMode: selectedMode,
       intervalo: document.getElementById('adInt').value,
       fade: document.getElementById('fadeDur').value,
       shortUrl: null
