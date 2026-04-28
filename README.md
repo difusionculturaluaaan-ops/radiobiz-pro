@@ -1,40 +1,36 @@
-# 📻 RadioBiz Pro
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-> Sistema de audio y publicidad para negocios — Gestión en tiempo real vía Firebase.
+## Getting Started
 
-## 🚀 URLs de producción
+First, run the development server:
 
-| URL | Uso |
-|-----|-----|
-| `tu-dominio.vercel.app/` | Dashboard del operador |
-| `tu-dominio.vercel.app/player?...` | Reproductor del cliente |
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-## 📱 Features
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-### Dashboard (Operador)
-- Gestión de clientes (CRUD)
-- Links únicos con código de acceso
-- Acortador de URLs (is.gd)
-- Bloqueo/activación en tiempo real
-- Contador de dispositivos conectados
-- Control remoto (play/pause, forzar anuncio, volumen)
-- Módulo de pagos: CoDi, manual, historial
-- QR + WhatsApp por cliente
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-### Reproductor (Cliente)
-- Validación de acceso contra Firebase
-- Jingles desde Google Drive con rotación automática
-- Música: MP3 local, radio online, carpeta de Drive
-- Fade in/out profesional entre música y anuncios
-- Modo quiosco + Wake Lock (pantalla activa)
-- Modo claro/oscuro
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## 🔧 Stack
-- HTML + Vanilla JS (monolítico, sin build step)
-- Firebase Realtime Database
-- Google Drive API
-- is.gd URL Shortener
-- Vercel (hosting estático)
+## Learn More
 
-## 📄 Documentación
-Ver `BUSINESS_LOGIC.md` para la constitución completa del proyecto.
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
