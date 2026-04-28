@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Syne, Outfit, JetBrains_Mono } from "next/font/google";
-import { AuthProvider } from "@/lib/auth-context";
+import ClientProviders from "@/components/ClientProviders";
 import "./globals.css";
 
 const syne = Syne({ 
@@ -35,9 +35,10 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${syne.variable} ${outfit.variable} ${jetbrainsMono.variable}`}>
         <div className="mesh-bg"></div>
-        <AuthProvider>
+        {/* ClientProviders is a 'use client' component — Firebase runs only in browser */}
+        <ClientProviders>
           {children}
-        </AuthProvider>
+        </ClientProviders>
       </body>
     </html>
   );

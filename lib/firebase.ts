@@ -1,6 +1,8 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getDatabase } from 'firebase/database';
+// Firebase client singleton — only initialized in browser
+// Guard prevents SSR crashes during Next.js static generation
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth } from 'firebase/auth';
+import { getDatabase, type Database } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,9 +14,17 @@ const firebaseConfig = {
   appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Prevent duplicate initialization in Next.js hot reload
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+// Only initialize on the client side
+let app: FirebaseApp;
+let auth: Auth;
+let db: Database;
 
-export const auth = getAuth(app);
-export const db   = getDatabase(app);
-export default app;
+if (typeof window !== 'undefined') {
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  auth = getAuth(app);
+  db = getDatabase(app);
+}
+
+// Export with non-null assertion — these are always defined on the client
+export { auth, db };
+export default app!;
