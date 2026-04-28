@@ -1,23 +1,18 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { fbListen, fbUpdate, generateLink, Client } from '@/lib/db';
 import styles from './programar.module.css';
 
 export default function ProgramarPage() {
   const searchParams = useSearchParams();
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   const [clients, setClients] = useState<Record<string, Client>>({});
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('id'));
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Player state
-  const [playing, setPlaying] = useState(false);
-  const [volume, setVolume] = useState(80);
 
   // Form state
   const [sourceMode, setSourceMode] = useState<'drive' | 'radio' | 'local'>('drive');
@@ -118,47 +113,6 @@ export default function ProgramarPage() {
       });
     }
   };
-
-  const handlePlayPause = () => {
-    if (!audioRef.current) return;
-    if (playing) {
-      audioRef.current.pause();
-      setPlaying(false);
-    } else {
-      audioRef.current.play().catch(err => {
-        showToast('❌ Error al reproducir: ' + err.message, 'error');
-        setPlaying(false);
-      });
-      setPlaying(true);
-    }
-  };
-
-  const handleLoadMusic = async () => {
-    if (!audioRef.current) return;
-
-    try {
-      if (sourceMode === 'radio' && radioUrl) {
-        audioRef.current.src = radioUrl;
-        audioRef.current.load();
-        setPlaying(false);
-        showToast('📡 Radio cargada', 'success');
-      } else if (sourceMode === 'drive' && musicFolder) {
-        showToast('☁️ Cargando desde Drive... (requiere API)', 'info');
-      } else if (sourceMode === 'local') {
-        showToast('📁 Local MP3 (requiere archivo)', 'info');
-      } else {
-        showToast('⚠️ Configura una fuente de audio primero', 'error');
-      }
-    } catch (err) {
-      showToast('❌ Error: ' + (err as Error).message, 'error');
-    }
-  };
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
-    }
-  }, [volume]);
 
   return (
     <div>
@@ -375,64 +329,41 @@ export default function ProgramarPage() {
                 </div>
               </div>
 
-              {/* Player Test Section */}
-              <div style={{ background: 'rgba(167, 139, 250, 0.05)', border: '1px solid rgba(167, 139, 250, 0.2)', borderRadius: '12px', padding: '16px' }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '12px' }}>🎧 Prueba la fuente de audio</div>
-
-                {/* Load Button */}
-                <button
-                  onClick={handleLoadMusic}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    background: 'var(--s2)',
-                    border: '1px solid var(--border2)',
-                    borderRadius: '8px',
-                    color: 'var(--text)',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    marginBottom: '12px',
-                  }}
-                >
-                  📂 Cargar fuente {sourceMode === 'radio' ? '📡' : sourceMode === 'drive' ? '☁️' : '🎵'}
-                </button>
-
-                {/* Player Controls */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
-                  <button
-                    onClick={handlePlayPause}
-                    style={{
-                      padding: '8px 16px',
-                      background: playing ? 'rgba(244, 63, 94, 0.2)' : 'rgba(52, 211, 153, 0.2)',
-                      border: `1px solid ${playing ? 'rgba(244, 63, 94, 0.4)' : 'rgba(52, 211, 153, 0.4)'}`,
-                      borderRadius: '6px',
-                      color: playing ? 'var(--red)' : 'var(--green)',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      flex: 1,
-                    }}
-                  >
-                    {playing ? '⏸ Pausar' : '▶ Reproducir'}
-                  </button>
-                </div>
-
-                {/* Volume Control */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '0.8rem' }}>🔊</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={volume}
-                    onChange={(e) => setVolume(Number(e.target.value))}
-                    style={{ flex: 1, cursor: 'pointer' }}
-                  />
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text2)', minWidth: '30px' }}>{volume}%</span>
-                </div>
-
-                {/* Hidden Audio Element */}
-                <audio ref={audioRef} crossOrigin="anonymous" />
-              </div>
+              {/* Test Player Button */}
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams({
+                    nombre: selectedClient.name,
+                    folder: jingleFolder,
+                    pin: selectedClient.pin,
+                    intervalo: intervalo,
+                    locked: '1',
+                    fade: fade,
+                    code: selectedClient.code,
+                    cid: selectedClient.id,
+                    ...(sourceMode === 'drive' && musicFolder && { musicfolder: musicFolder }),
+                    ...(sourceMode === 'radio' && radioUrl && { radio: radioUrl }),
+                  });
+                  window.open(
+                    `https://radiobiz-pro.vercel.app/player-pro-v4.html?${params.toString()}`,
+                    'player-test',
+                    'width=1024,height=768'
+                  );
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'rgba(99, 102, 241, 0.1)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  borderRadius: '10px',
+                  color: 'var(--text)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '0.95rem',
+                }}
+              >
+                🎧 Probar con reproductor V4
+              </button>
 
               {/* Save Button */}
               <button
