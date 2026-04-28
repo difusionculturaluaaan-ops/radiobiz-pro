@@ -143,8 +143,8 @@
   text-align: center;
 }
 
-.copy:hover { background: rgba(56,189,248,0.12); border-color: rgba(56,189,248,0.3); color: var(--info); }
-.wa:hover   { background: rgba(52,211,153,0.12); border-color: rgba(52,211,153,0.3); color: var(--green); }
+.program:hover { background: rgba(167,139,250,0.12); border-color: rgba(167,139,250,0.3); color: var(--accent); }
+.renew:hover { background: rgba(240,192,64,0.12); border-color: rgba(240,192,64,0.3); color: var(--accent2); }
 .edit:hover { background: rgba(167,139,250,0.12); border-color: rgba(167,139,250,0.3); color: var(--accent); }
 .del        { flex: 0 0 auto; }
 .del:hover  { background: rgba(244,63,94,0.12); border-color: rgba(244,63,94,0.3); color: var(--red); }

@@ -95,11 +95,29 @@ export default function ClientesPage() {
     return Object.values(sessions).filter(s => s?.clientId === clientId).length;
   }
 
-  async function handleShareWA(id: string) {
-    const c = clients[id]; if (!c) return;
-    const link = c.shortUrl ?? generateLink(c);
-    const msg = encodeURIComponent(`🎵 *RadioBiz Pro* — Tu reproductor está listo!\n\n*Negocio:* ${c.name} ${c.emoji ?? ''}\n\n👆 Abre este link:\n${link}\n\n📌 PIN: *${c.pin}*\n\n_Powered by RadioBiz Pro_`);
-    window.open('https://wa.me/?text=' + msg, '_blank');
+  async function handleRenewLink(id: string) {
+    const c = clients[id];
+    if (!c) return;
+
+    try {
+      const newCode = generateCode();
+      const newShortUrl = `https://radiobiz-pro.vercel.app/s/${id}`;
+
+      await fbUpdate(`clients/${id}`, { code: newCode, shortUrl: newShortUrl });
+
+      const sessionCount = getSessionCount(id);
+      if (sessionCount > 0) {
+        Object.entries(sessions).forEach(async ([sessionId, session]) => {
+          if (session?.clientId === id) {
+            await fbRemove(`sessions/${sessionId}`);
+          }
+        });
+      }
+
+      showToast(`✅ Link renovado. ${sessionCount} sesión(es) desconectada(s).`, 'success');
+    } catch (e: unknown) {
+      showToast('Error al renovar link: ' + (e as Error).message, 'error');
+    }
   }
 
   async function handleExportCSV() {
@@ -159,7 +177,7 @@ export default function ClientesPage() {
               onDelete={() => handleDelete(c.id)}
               onToggleBlock={() => handleToggleBlock(c.id)}
               onProgram={() => handleProgram(c.id)}
-              onShareWA={() => handleShareWA(c.id)}
+              onRenewLink={() => handleRenewLink(c.id)}
             />
           ))}
           <div className={styles.emptyCard} onClick={() => setModalOpen(true)}>
