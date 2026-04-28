@@ -6,6 +6,7 @@ import styles from './ClientCard.module.css';
 interface Props {
   client: Client;
   index: number;
+  sessionCount?: number;
   onEdit: () => void;
   onDelete: () => void;
   onToggleBlock: () => void;
@@ -13,7 +14,7 @@ interface Props {
   onShareWA: () => void;
 }
 
-export default function ClientCard({ client: c, index, onEdit, onDelete, onToggleBlock, onProgram, onShareWA }: Props) {
+export default function ClientCard({ client: c, index, sessionCount = 0, onEdit, onDelete, onToggleBlock, onProgram, onShareWA }: Props) {
   const isBlocked = c.blocked === true;
 
   return (
@@ -30,7 +31,7 @@ export default function ClientCard({ client: c, index, onEdit, onDelete, onToggl
             {isBlocked && <span className={styles.blockedBadge}>BLOQUEADO</span>}
           </div>
           <div className={styles.sub} style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
-            PIN: {c.pin} · {c.intervalo} min
+            PIN: {c.pin} · {c.intervalo} min · {sessionCount > 0 ? `🟢 ${sessionCount}` : '⚫ 0'}
           </div>
         </div>
         <button

@@ -10,6 +10,7 @@ import styles from './clientes.module.css';
 export default function ClientesPage() {
   const router = useRouter();
   const [clients, setClients] = useState<Record<string, Client>>({});
+  const [sessions, setSessions] = useState<Record<string, { clientId: string }>>({});
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -17,6 +18,13 @@ export default function ClientesPage() {
   useEffect(() => {
     const unsub = fbListen('clients', (data) => {
       setClients((data as Record<string, Client>) ?? {});
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = fbListen('sessions', (data) => {
+      setSessions((data as Record<string, { clientId: string }>) ?? {});
     });
     return () => unsub();
   }, []);
@@ -83,6 +91,10 @@ export default function ClientesPage() {
     router.push(`/dashboard/programar?id=${id}`);
   }
 
+  function getSessionCount(clientId: string): number {
+    return Object.values(sessions).filter(s => s?.clientId === clientId).length;
+  }
+
   async function handleShareWA(id: string) {
     const c = clients[id]; if (!c) return;
     const link = c.shortUrl ?? generateLink(c);
@@ -142,6 +154,7 @@ export default function ClientesPage() {
               key={c.id}
               client={c}
               index={i}
+              sessionCount={getSessionCount(c.id)}
               onEdit={() => { setEditingClient(c); setModalOpen(true); }}
               onDelete={() => handleDelete(c.id)}
               onToggleBlock={() => handleToggleBlock(c.id)}
