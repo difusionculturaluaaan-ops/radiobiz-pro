@@ -224,7 +224,7 @@ window.goPage = id => {
 // ═══ RENDER ═══
 function renderOverview() {
   updateOverviewStats();
-  const list = Object.values(clients).slice(0,4);
+  const list = Object.values(clients);
   const el = document.getElementById('overviewClients');
   if(!list.length) {
     el.innerHTML=`<div class="add-card" onclick="openAddModal()"><div class="ai">➕</div><h3>Agregar primer cliente</h3><p>Haz clic para configurar tu primer negocio</p></div>`;
