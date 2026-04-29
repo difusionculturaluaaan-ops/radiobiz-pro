@@ -65,24 +65,30 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ═══ AUTH ═══
+// ═══ AUTH ═══ TEMPORARY PIN-BASED (TODO: restore Firebase Auth + proper login)
+const ADMIN_PIN = '5678';
+
 window.doLogin = async () => {
-  const email = document.getElementById('loginEmail').value.trim();
-  const pass  = document.getElementById('loginPass').value;
+  const pin = document.getElementById('loginPass').value;
   const errEl = document.getElementById('pinErr');
   errEl.textContent = '';
-  if(!email || !pass){ errEl.textContent = 'Ingresa email y contraseña'; return; }
-  try {
-    document.getElementById('loginBtn').textContent = 'Entrando...';
-    await signInWithEmailAndPassword(auth, email, pass);
-  } catch(e) {
-    const msg = (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found')
-      ? 'Credenciales incorrectas' : 'Error: ' + e.message;
-    errEl.textContent = msg;
-    document.getElementById('loginBtn').textContent = 'Entrar →';
+
+  if(!pin){ errEl.textContent = 'Ingresa el PIN'; return; }
+
+  if(pin === ADMIN_PIN) {
+    document.getElementById('pinScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    initApp();
+  } else {
+    errEl.textContent = 'PIN incorrecto';
   }
 };
-window.lockDash = () => signOut(auth).then(() => location.reload());
+window.lockDash = () => {
+  document.getElementById('pinScreen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginPass').value = '';
+  location.reload();
+};
 
 // ═══ THEME ═══
 window.toggleTheme = () => {
@@ -901,13 +907,10 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
   <button class="theme-btn" onclick="toggleTheme()"><span id="pTI">☀️</span><span id="pTT">Modo claro</span></button>
   <div class="pin-card">
     <h2>Acceso al dashboard</h2>
-    <p>Credenciales de administrador</p>
+    <p>Ingresa el PIN de administrador</p>
     <div style="display:flex;flex-direction:column;gap:10px;margin:18px 0;">
-      <input type="email" id="loginEmail" placeholder="Email" autocomplete="username"
-        style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s;"
-        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
-      <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"
-        style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s;"
+      <input type="password" id="loginPass" placeholder="PIN (4 dígitos)" autocomplete="off" maxlength="4"
+        style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s;text-align:center;letter-spacing:8px;"
         onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
     </div>
     <button id="loginBtn" onclick="doLogin()"
