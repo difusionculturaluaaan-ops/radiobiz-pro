@@ -1360,42 +1360,26 @@ function checkAdminCmds(){
 let _lmUrl = '';
 
 async function generateClientLink() {
-  const base = window.location.origin + '/player-pro-v4.html';
-  const p = new URLSearchParams();
+  if(!PARAMS.cid) {
+    log('⚠ No client ID available','error');
+    return;
+  }
 
-  // Identidad y config
-  const name = document.getElementById('bizName').value.trim() || clientName;
-  p.set('nombre',   name);
-  p.set('locked',   '1');
-  p.set('intervalo', document.getElementById('adInt').value);
-  p.set('fade',     document.getElementById('fadeDur').value);
-  p.set('pin',      PIN);
+  // React player loads config from Firebase, so only need clientId
+  const base = window.location.origin + '/player-pro-v4-redirect';
+  const p = new URLSearchParams({ cid: PARAMS.cid });
+  const longUrl = base + '?' + p.toString();
+  _lmUrl = longUrl;
 
-  // Jingles folder siempre va
-  if(currentFolderId) p.set('folder', currentFolderId);
-
-  // Firebase auth params
-  if(PARAMS.code) p.set('code', PARAMS.code);
-  if(PARAMS.cid)  p.set('cid',  PARAMS.cid);
-
-  // Fuente de música activa — usa curMode para no confundir radio cargada vs activa
+  // Show source info
   let srcLabel = '📁 Local (cliente carga sus MP3)';
   const radioInput = (document.getElementById('radioUrl')?.value || '').trim();
   if(curMode === 'radio' && radioInput) {
-    p.set('radio', radioInput);
     const rName = radioInput.split('/').pop().split('-')[0] || 'Radio';
     srcLabel = '📡 Radio — ' + rName;
   } else if(curMode === 'drive' && driveMusicFolderId) {
-    p.set('musicfolder', driveMusicFolderId);
-    srcLabel = '☁️ Drive Music — ' + driveMusicFolderId.substring(0, 12) + '...';
-  } else if(curMode !== 'mp3' && driveMusicFolderId) {
-    // fallback: musicfolder configurado aunque no se haya activado el tab
-    p.set('musicfolder', driveMusicFolderId);
     srcLabel = '☁️ Drive Music — ' + driveMusicFolderId.substring(0, 12) + '...';
   }
-
-  const longUrl = base + '?' + p.toString();
-  _lmUrl = longUrl;
 
   document.getElementById('lmUrl').textContent    = '⏳ Acortando...';
   document.getElementById('lmSrcTxt').textContent = srcLabel;
