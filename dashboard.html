@@ -115,6 +115,8 @@ function initTheme(){
 function initApp() {
   document.getElementById('overviewDate').textContent =
     new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  // Clean old sessions on startup
+  cleanOldSessions();
   // Listen to clients in real time
   fbListen('clients', data => {
     clients = data || {};
@@ -128,6 +130,30 @@ function initApp() {
     updateSessionBadges(data || {});
   });
 }
+
+// ═══ SESSION CLEANUP ═══
+async function cleanOldSessions() {
+  try {
+    const sessions = await fbGet('sessions');
+    if(!sessions) return;
+    const now = Date.now();
+    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+    let cleaned = 0;
+    for(const [sid, s] of Object.entries(sessions)) {
+      if(s.lastPing && s.lastPing < thirtyDaysAgo) {
+        await fbRemove('sessions/'+sid);
+        cleaned++;
+      }
+    }
+    if(cleaned > 0) console.log('🧹 Limpiadas '+cleaned+' sesiones viejas');
+  } catch(e) { console.log('Session cleanup error:', e.message); }
+}
+
+window.manualCleanSessions = async () => {
+  if(!confirm('¿Borrar todas las sesiones de más de 30 días?')) return;
+  await cleanOldSessions();
+  toast('✅ Sesiones viejas eliminadas','success');
+};
 
 // ═══ OVERVIEW STATS ═══
 function updateOverviewStats() {
@@ -1070,6 +1096,11 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
           <div class="sl">🔥 Firebase</div>
           <div class="fb-status"><div class="fb-dot"></div>Conectado a ProRadioBiz</div>
           <p style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:8px;line-height:1.7;">Los clientes se sincronizan en tiempo real entre todos tus dispositivos automáticamente.</p>
+        </div>
+        <div class="settings-section">
+          <div class="sl">🧹 Mantenimiento</div>
+          <p style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">Elimina sesiones de dispositivos que no se conectan hace 30 días.</p>
+          <button class="btn" onclick="manualCleanSessions()" style="width:100%;background:var(--accent2)18;color:var(--accent2);border:1px solid var(--accent2)40;">🧹 Limpiar sesiones viejas</button>
         </div>
         <div class="settings-section">
           <div class="sl">🗑️ Zona de peligro</div>
