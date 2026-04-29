@@ -246,50 +246,44 @@ function renderAllClients() {
 function renderClientCards(container, list) {
   container.innerHTML='';
   list.forEach(c => {
-    const link = generateLink(c);
-    const radioName = c.radio?(c.radio.includes('somafm')?(c.radio.split('/').pop().split('-')[0]||'Stream'):'Radio personalizada'):'Sin radio';
-    const isBlocked = c.blocked === true;
+    const monto = c.monto || 499;
+    const pagos = c.pagos || [];
+    const ultimoPago = pagos.length ? pagos[pagos.length-1] : null;
+    const hoy = new Date();
+    let estadoPago = 'sin-pago';
+    if(ultimoPago) {
+      const diasDesde = Math.floor((hoy - new Date(ultimoPago.fecha)) / (1000*60*60*24));
+      if(diasDesde <= 35) estadoPago = 'pagado';
+      else if(diasDesde <= 45) estadoPago = 'pendiente';
+      else estadoPago = 'vencido';
+    }
+    const colorEstado = {pagado:'var(--green)',pendiente:'var(--warn)',vencido:'var(--red)','sin-pago':'var(--muted)'}[estadoPago];
+    const iconoEstado = {pagado:'✅',pendiente:'⏳',vencido:'🚫','sin-pago':'⚪'}[estadoPago];
     const div = document.createElement('div');
-    div.className = 'client-card' + (isBlocked?' blocked':'');
+    div.className = 'client-card';
     div.innerHTML=`
-      <div class="cc-header">
-        <div class="cc-avatar">${c.emoji||'🏪'}</div>
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+        <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent)22,var(--accent2)22);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">${c.emoji||'🏪'}</div>
         <div style="flex:1;min-width:0;">
-          <div class="cc-name">${c.name} ${isBlocked?'<span style="font-size:.6rem;background:var(--red)22;color:var(--red);border:1px solid var(--red)40;border-radius:99px;padding:1px 7px;">BLOQUEADO</span>':''}</div>
-          <div class="cc-sub">PIN: ${c.pin} · ${c.intervalo} min · ${radioName}</div>
-        </div>
-        <button onclick="toggleBlock('${c.id}')" style="background:${isBlocked?'var(--green)18':'var(--red)12'};border:1px solid ${isBlocked?'var(--green)40':'var(--red)30'};color:${isBlocked?'var(--green)':'var(--red)'};border-radius:8px;padding:5px 10px;cursor:pointer;font-size:.65rem;font-weight:700;font-family:'Syne',sans-serif;white-space:nowrap;">
-          ${isBlocked?'✅ Activar':'🚫 Bloquear'}
-        </button>
-      </div>
-      <div class="cc-meta">
-        <div class="cc-meta-item">
-          <div class="ml">Drive Folder</div>
-          <div class="mv">${c.folder.substring(0,16)}...</div>
-        </div>
-        <div class="cc-meta-item">
-          <div class="ml">Intervalo</div>
-          <div class="mv">Cada ${c.intervalo} min</div>
+          <div style="font-size:.95rem;font-weight:800;margin-bottom:3px;">${c.name}</div>
+          <div style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;line-height:1.6;">
+            ${c.email?'📧 '+c.email+'<br>':''}${c.phone?'📱 '+c.phone+'<br>':''}${c.campaign?'📢 '+c.campaign+'<br>':''}${c.createdAt?'📅 '+new Date(c.createdAt).toLocaleDateString('es-MX')+'<br>':''}
+          </div>
         </div>
       </div>
-      <!-- Sessions indicator -->
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:9px;margin-bottom:10px;">
-        <span style="font-size:.6rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;flex:1;">Dispositivos conectados</span>
-        <span id="sessions-${c.id}" style="font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);">⚫ Sin conexiones</span>
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:10px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:.58rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);text-transform:uppercase;margin-bottom:2px;">Plan</div>
+          <div style="font-size:.8rem;font-weight:700;font-family:'JetBrains Mono',monospace;">${c.plan||'Estándar'} · \$${monto}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:.58rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);text-transform:uppercase;margin-bottom:2px;">Estado</div>
+          <div style="font-size:.8rem;font-weight:700;color:${colorEstado};">${iconoEstado} ${estadoPago.charAt(0).toUpperCase()+estadoPago.slice(1)}</div>
+        </div>
       </div>
-      <div class="cc-link" onclick="copyClientLink('${c.id}')" title="Clic para copiar">
-        ${c.shortUrl ? `<span style="color:var(--green);font-weight:700;">${c.shortUrl}</span>` : generateLink(c)}
-      </div>
-      <div class="cc-actions">
-        <button class="ca-btn copy" onclick="copyClientLink('${c.id}')">📋 Copiar</button>
-        <button class="ca-btn wa" onclick="shareWA('${c.id}')">💬 WA</button>
-        <button class="ca-btn qr" onclick="showQR('${c.id}')">📷 QR</button>
-        <button class="ca-btn edit" onclick="openEditModal('${c.id}')">✏️</button>
-        <button class="ca-btn del" onclick="deleteClient('${c.id}')">🗑️</button>
-      </div>
-      ${!c.shortUrl ? `<button onclick="generateShortForClient('${c.id}')" style="width:100%;margin-top:7px;padding:7px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:.68rem;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;">🔗 Generar link corto</button>` : ''}
-      <div style="margin-top:9px;">
-        <button class="ca-btn ctrl" onclick="goCtrl('${c.id}')" style="width:100%;padding:9px;">🎛️ Control remoto</button>
+      <div style="display:flex;gap:6px;">
+        <button class="ca-btn edit" onclick="openEditModal('${c.id}')" style="flex:1;">✏️ Editar</button>
+        <button class="ca-btn del" onclick="deleteClient('${c.id}')" style="flex:1;">🗑️ Eliminar</button>
       </div>`;
     container.appendChild(div);
   });
@@ -300,7 +294,7 @@ window.openAddModal = () => {
   editingId=null;
   document.getElementById('modalTitle').textContent='➕ Nuevo cliente';
   document.getElementById('saveClientBtn').textContent='💾 Guardar y generar link';
-  ['fName','fFolder','fRadio','fMusicFolder'].forEach(id=>document.getElementById(id).value='');
+  ['fName','fEmail','fPhone','fCampaign','fFolder','fRadio','fMusicFolder'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fPin').value='1234';
   document.getElementById('fInt').value='10';
   document.getElementById('fFade').value='2';
@@ -314,6 +308,9 @@ window.openEditModal = id => {
   document.getElementById('modalTitle').textContent='✏️ Editar: '+c.name;
   document.getElementById('saveClientBtn').textContent='💾 Actualizar cliente';
   document.getElementById('fName').value=c.name;
+  document.getElementById('fEmail').value=c.email||'';
+  document.getElementById('fPhone').value=c.phone||'';
+  document.getElementById('fCampaign').value=c.campaign||'';
   document.getElementById('fFolder').value=c.folder;
   document.getElementById('fRadio').value=c.radio||'';
   document.getElementById('fMusicFolder').value=c.musicfolder||'';
@@ -328,6 +325,9 @@ window.closeModal = () => document.getElementById('clientModal').classList.remov
 
 window.saveClient = async () => {
   const name=document.getElementById('fName').value.trim();
+  const email=document.getElementById('fEmail').value.trim();
+  const phone=document.getElementById('fPhone').value.trim();
+  const campaign=document.getElementById('fCampaign').value.trim();
   const folder=document.getElementById('fFolder').value.trim();
   const radio=document.getElementById('fRadio').value.trim();
   const musicfolder=document.getElementById('fMusicFolder').value.trim();
@@ -359,12 +359,12 @@ window.saveClient = async () => {
   if(musicfolder && !cleanMusicFolder){toast('Folder ID de música inválido','error');return;}
   try {
     if(editingId) {
-      await fbUpdate('clients/'+editingId, {name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji});
+      await fbUpdate('clients/'+editingId, {name,email,phone,campaign,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji});
       toast('✅ '+name+' actualizado','success');
     } else {
       const id = 'c_'+Date.now();
       const code = generateCode();
-      await fbSet('clients/'+id, {id,name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji,code,blocked:false,createdAt:Date.now()});
+      await fbSet('clients/'+id, {id,name,email,phone,campaign,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji,code,blocked:false,createdAt:Date.now()});
       toast('✅ '+name+' creado — generando link corto...','success');
       // Auto-generate short URL
       setTimeout(async () => {
@@ -1122,6 +1122,9 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
     </div>
     <div class="form-grid">
       <div class="fg form-full"><label>Nombre del negocio *</label><input type="text" id="fName" placeholder="Ej: Farmacia San José"></div>
+      <div class="fg"><label>Email</label><input type="email" id="fEmail" placeholder="contacto@negocio.com"></div>
+      <div class="fg"><label>Teléfono</label><input type="tel" id="fPhone" placeholder="+34 666 123 456"></div>
+      <div class="fg form-full"><label>Nombre de campaña</label><input type="text" id="fCampaign" placeholder="Ej: Promoción Verano 2026"></div>
       <div class="fg form-full"><label>Folder ID de jingles en Drive *</label><input type="text" id="fFolder" placeholder="1aBcDeFgHiJkLmNoPqRs..."></div>
       <div class="fg form-full"><label>Folder ID de música en Drive (opcional)</label><input type="text" id="fMusicFolder" placeholder="ID carpeta con MP3 de música..."></div>
       <div class="fg form-full">
