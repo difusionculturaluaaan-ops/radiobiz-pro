@@ -69,18 +69,22 @@ window.addEventListener('DOMContentLoaded', () => {
 const ADMIN_PIN = '5678';
 
 window.doLogin = async () => {
-  const pin = document.getElementById('loginPass').value;
+  const pin = document.getElementById('loginPass').value.trim();
   const errEl = document.getElementById('pinErr');
   errEl.textContent = '';
+
+  console.log('[doLogin] PIN entered:', pin, 'Expected:', ADMIN_PIN, 'Match:', pin === ADMIN_PIN);
 
   if(!pin){ errEl.textContent = 'Ingresa el PIN'; return; }
 
   if(pin === ADMIN_PIN) {
+    console.log('[doLogin] PIN correct, showing app');
     document.getElementById('pinScreen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     initApp();
   } else {
-    errEl.textContent = 'PIN incorrecto';
+    console.log('[doLogin] PIN incorrect');
+    errEl.textContent = 'PIN incorrecto (ingresaste: ' + pin + ')';
   }
 };
 window.lockDash = () => {
