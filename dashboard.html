@@ -48,6 +48,9 @@ function fbListen(path, cb) { onValue(ref(db, path), s => cb(s.exists() ? s.val(
 window.addEventListener('DOMContentLoaded', () => {
   initTheme();
   document.getElementById('baseUrlInput').value = BASE_URL;
+  document.getElementById('loginEmail').addEventListener('keydown', e => {
+    if(e.key === 'Enter') doLogin();
+  });
   document.getElementById('loginPass').addEventListener('keydown', e => {
     if(e.key === 'Enter') doLogin();
   });
@@ -65,26 +68,23 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ═══ AUTH ═══ TEMPORARY PIN-BASED (TODO: restore Firebase Auth + proper login)
-const ADMIN_PIN = '5678';
-
+// ═══ AUTH ═══ Firebase Email/Password
 window.doLogin = async () => {
-  const pin = document.getElementById('loginPass').value.trim();
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
   const errEl = document.getElementById('pinErr');
   errEl.textContent = '';
 
-  console.log('[doLogin] PIN entered:', pin, 'Expected:', ADMIN_PIN, 'Match:', pin === ADMIN_PIN);
+  if(!email || !pass){ errEl.textContent = 'Ingresa email y contraseña'; return; }
 
-  if(!pin){ errEl.textContent = 'Ingresa el PIN'; return; }
-
-  if(pin === ADMIN_PIN) {
-    console.log('[doLogin] PIN correct, showing app');
-    document.getElementById('pinScreen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    initApp();
-  } else {
-    console.log('[doLogin] PIN incorrect');
-    errEl.textContent = 'PIN incorrecto (ingresaste: ' + pin + ')';
+  try {
+    document.getElementById('loginBtn').textContent = 'Entrando...';
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    const msg = (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found')
+      ? 'Credenciales incorrectas' : 'Error: ' + e.message;
+    errEl.textContent = msg;
+    document.getElementById('loginBtn').textContent = 'Entrar →';
   }
 };
 window.lockDash = () => {
@@ -911,10 +911,13 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
   <button class="theme-btn" onclick="toggleTheme()"><span id="pTI">☀️</span><span id="pTT">Modo claro</span></button>
   <div class="pin-card">
     <h2>Acceso al dashboard</h2>
-    <p>Ingresa el PIN de administrador</p>
+    <p>Ingresa tus credenciales</p>
     <div style="display:flex;flex-direction:column;gap:10px;margin:18px 0;">
-      <input type="password" id="loginPass" placeholder="PIN (4 dígitos)" autocomplete="off" maxlength="4"
-        style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s;text-align:center;letter-spacing:8px;"
+      <input type="email" id="loginEmail" placeholder="Email" autocomplete="email"
+        style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s;"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+      <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"
+        style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s;"
         onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
     </div>
     <button id="loginBtn" onclick="doLogin()"
