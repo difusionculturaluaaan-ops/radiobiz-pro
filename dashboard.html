@@ -312,10 +312,25 @@ window.saveClient = async () => {
   if(!name){toast('El nombre es requerido','error');return;}
   if(!folder){toast('El Folder ID es requerido','error');return;}
   if(!/^\d{4}$/.test(pin)){toast('El PIN debe ser 4 dígitos','error');return;}
-  const match=folder.match(/folders\/([a-zA-Z0-9_-]+)/);
-  const cleanFolder=match?match[1]:folder;
-  const mfMatch=musicfolder.match(/folders\/([a-zA-Z0-9_-]+)/);
-  const cleanMusicFolder=mfMatch?mfMatch[1]:musicfolder;
+
+  // Extract folder ID from URL or use directly if it's just the ID
+  const extractId = (val) => {
+    // Remove ?usp=drive_link and other query params
+    val = val.split('?')[0];
+    // Extract ID from URL if present
+    const match = val.match(/folders\/([a-zA-Z0-9_-]+)/);
+    if(match) return match[1];
+    // Otherwise use the value as-is if it looks like a folder ID
+    if(/^[a-zA-Z0-9_-]+$/.test(val)) return val;
+    // Invalid format
+    return null;
+  };
+
+  const cleanFolder = extractId(folder);
+  const cleanMusicFolder = musicfolder ? extractId(musicfolder) : '';
+
+  if(!cleanFolder){toast('Folder ID de jingles inválido','error');return;}
+  if(musicfolder && !cleanMusicFolder){toast('Folder ID de música inválido','error');return;}
   try {
     if(editingId) {
       await fbUpdate('clients/'+editingId, {name,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji});
