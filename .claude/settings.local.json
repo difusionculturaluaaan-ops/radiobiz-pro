@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:3000/player/c_test)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs kill *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\image\\Documents\\radiobiz-next",
+      "\\tmp"
+    ]
+  }
+}

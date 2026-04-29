@@ -419,6 +419,7 @@ body.locked .force-btn{display:none;}
       <div class="pill" id="drivePill"><div class="d"></div><span id="driveTxt">Drive</span></div>
       <div class="pill" id="statusPill"><div class="d"></div><span id="statusTxt">Inactivo</span></div>
       <div class="wakelock-pill" id="wakelockPill" title="Pantalla activa — Wake Lock"><div class="wd"></div><span id="wakelockTxt">Pantalla activa</span></div>
+      <button class="icon-btn" onclick="openClientLink()" title="Abrir reproductor para cliente final">🔗 Cliente</button>
       <button class="icon-btn hide-kiosk" onclick="toggleKiosk()" id="kioskBtn">🖥 Quiosco</button>
       <button class="icon-btn red hide-kiosk" onclick="lockApp()">🔒</button>
     </div>
@@ -1275,6 +1276,23 @@ function checkAdminCmds(){
 // LOG
 // ═══════════════════════════════════════════
 function log(msg,type){const el=document.getElementById('actLog');const now=new Date();const ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');const d=document.createElement('div');d.className='le'+(type?' '+type:'');d.innerHTML=`<span class="ts">${ts}</span>${msg}`;el.insertBefore(d,el.firstChild);}
+
+// ═══════════════════════════════════════════
+// LINK CLIENTE (Player V5)
+// ═══════════════════════════════════════════
+function openClientLink(){
+  const params=new URLSearchParams();
+  if(PARAMS.cid) params.append('cid',PARAMS.cid);
+  if(PARAMS.code) params.append('code',PARAMS.code);
+  if(PARAMS.nombre||clientName) params.append('nombre',PARAMS.nombre||clientName);
+  if(document.getElementById('adInt')) params.append('intervalo',document.getElementById('adInt').value);
+  if(document.getElementById('fadeDur')) params.append('fade',document.getElementById('fadeDur').value);
+  if(currentFolderId) params.append('folder',currentFolderId);
+  if(driveMusicFolderId) params.append('musicfolder',driveMusicFolderId);
+  if(curMode==='radio'&&musicAudio.src) params.append('radio',musicAudio.src);
+  const url='/player/cliente.html'+(params.toString()?'?'+params.toString():'');
+  window.open(url,'clientPlayer','width=800,height=600');
+}
 </script>
 </body>
 </html>
