@@ -35,7 +35,7 @@ let ctrlClientId = null;
 let isPlaying = false;
 let qrCurrentLink = '';
 let BASE_URL = localStorage.getItem('rbz_base_url') ||
-  'https://radiobiz-pro.vercel.app/player-pro-v4.html';
+  'https://radiobiz-pro.vercel.app/player/cliente';
 
 // ═══ FIREBASE HELPERS ═══
 async function fbSet(path, data) { await set(ref(db, path), data); }
@@ -1153,7 +1153,7 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
         </div>
         <div class="settings-section">
           <div class="sl">🌐 URL del reproductor</div>
-          <div class="fg" style="margin-bottom:11px;"><label>URL donde está player-pro-v4.html</label><input type="url" id="baseUrlInput" placeholder="https://radiobiz-pro.netlify.app/player-pro-v4.html"></div>
+          <div class="fg" style="margin-bottom:11px;"><label>URL del reproductor del cliente (Player V5)</label><input type="url" id="baseUrlInput" placeholder="https://radiobiz-pro.vercel.app/player/cliente"></div>
           <button class="btn primary" onclick="saveBaseUrl()" style="width:100%;">💾 Guardar URL</button>
         </div>
         <div class="settings-section">
