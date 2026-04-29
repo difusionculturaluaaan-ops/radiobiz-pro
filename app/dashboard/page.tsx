@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react';
 import { fbListen, Client } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
-
 export default function DashboardPage() {
   const [clients, setClients] = useState<Record<string, Client>>({});
   const [sessions, setSessions] = useState<Record<string, { clientId: string; lastPing: number }>>({});

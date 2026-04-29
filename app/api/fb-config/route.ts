@@ -1,6 +1,4 @@
 // Next.js Route Handler — Serves Firebase config from env vars (no API key in client code)
-export const dynamic = 'force-dynamic';
-
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',

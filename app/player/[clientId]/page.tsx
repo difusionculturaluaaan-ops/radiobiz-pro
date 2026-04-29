@@ -1,7 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { fbGet, fbUpdate, fbListen, Client, generateLink } from '@/lib/db';
