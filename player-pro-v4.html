@@ -1290,7 +1290,7 @@ function openClientLink(){
   if(currentFolderId) params.append('folder',currentFolderId);
   if(driveMusicFolderId) params.append('musicfolder',driveMusicFolderId);
   if(curMode==='radio'&&musicAudio.src) params.append('radio',musicAudio.src);
-  const url='/player/cliente.html'+(params.toString()?'?'+params.toString():'');
+  const url='/player/cliente'+(params.toString()?'?'+params.toString():'');
   window.open(url,'clientPlayer','width=800,height=600');
 }
 </script>

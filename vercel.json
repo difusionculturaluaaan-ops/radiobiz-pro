@@ -6,6 +6,10 @@
       "dest": "/dashboard.html"
     },
     {
+      "src": "/player/cliente",
+      "dest": "/player/cliente.html"
+    },
+    {
       "src": "/player",
       "dest": "/player-pro-v4.html"
     },
