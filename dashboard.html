@@ -330,7 +330,7 @@ function renderClientCards(container, list) {
       </div>
       <div class="cc-actions">
         <button class="ca-btn copy" onclick="copyClientLink('${c.id}')">📋 Copiar</button>
-        <button class="ca-btn" onclick="openPlayer4('${c.id}')" title="Abrir Player V4 para programar">🎛️ V4</button>
+        <button class="ca-btn wa" onclick="shareWA('${c.id}')">💬 WA</button>
         <button class="ca-btn qr" onclick="showQR('${c.id}')">📷 QR</button>
         <button class="ca-btn edit" onclick="openEditModal('${c.id}')">✏️</button>
         <button class="ca-btn del" onclick="deleteClient('${c.id}')">🗑️</button>
@@ -488,22 +488,6 @@ window.copyClientLink = async id => {
     const ta=document.createElement('textarea');ta.value=link;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     toast('📋 Link copiado!','success');
   });
-};
-
-window.openPlayer4 = id => {
-  const c = clients[id]; if(!c) return;
-  const params = new URLSearchParams({
-    cid: c.id,
-    code: c.code,
-    nombre: c.name,
-    pin: c.pin,
-    folder: c.folder,
-    intervalo: c.intervalo,
-    fade: c.fade || 2,
-    musicfolder: c.musicfolder || '',
-    radio: c.radio || ''
-  });
-  window.open('/player-pro-v4.html?' + params.toString(), 'v4Player', 'width=1200,height=800');
 };
 
 window.shareWA = async id => {
