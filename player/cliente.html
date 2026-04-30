@@ -330,6 +330,7 @@ let playing = false;
 let adIntervalMs = (PARAMS.intervalo ? parseInt(PARAMS.intervalo) : 10) * 60000;
 let adTimer = null, cdTimer = null, nextAdAt = null;
 let musicFiles = [], curTrack = -1;
+let spotFiles = [], spotIndex = 0;
 let driveMusicFiles = [];
 let currentFolderId = PARAMS.folder || localStorage.getItem('rbz_folder_v5') || DEFAULT_FOLDER_ID;
 let clientName = PARAMS.nombre || localStorage.getItem('rbz_bizname_v5') || 'Mi Negocio';
@@ -447,6 +448,9 @@ window.togglePlay = () => {
   if(playing) {
     pauseMusic();
   } else {
+    if(!playing && spotFiles.length === 0) {
+      loadSpots(); // Cargar spots en primer play
+    }
     playMusic();
   }
 };
@@ -531,10 +535,42 @@ function updateCountdown() {
     (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
 }
 
+async function loadSpots() {
+  const folderId = PARAMS.folder || programming?.spotFolder;
+  if(!folderId) return;
+  try {
+    const res = await fetch(`/api/drive/${folderId}`);
+    const data = await res.json();
+    spotFiles = data.files || [];
+    spotIndex = 0;
+  } catch(e) {
+    console.error('Error loading spots:', e);
+    spotFiles = [];
+  }
+}
+
 function playAd() {
-  // Placeholder: en una versión futura reproduciría jingles desde Firebase
-  console.log('Ad time reached');
-  scheduleAd();
+  if(!spotFiles || spotFiles.length === 0) {
+    // No hay spots, reproducir música directamente
+    playMusic();
+    return;
+  }
+
+  // Reproducir siguiente spot
+  const spot = spotFiles[spotIndex % spotFiles.length];
+  adAudio.src = `https://drive.google.com/uc?export=download&id=${spot.id}`;
+  adAudio.volume = (programming?.volumeAd || 90) / 100;
+  adAudio.play();
+  playing = true;
+  document.getElementById('playBtn').textContent = '⏸';
+  document.getElementById('vinyl').classList.add('spin');
+  spotIndex++;
+
+  // Después del spot, reproducir música
+  adAudio.onended = () => {
+    playMusic();
+    scheduleAd(); // Programar el próximo anuncio
+  };
 }
 
 /* RADIO */
