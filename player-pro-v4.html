@@ -644,6 +644,7 @@ const firebaseConfig = {
 };
 const fbApp = initializeApp(firebaseConfig);
 const fbDb = getDatabase(fbApp);
+window.fbDb = fbDb;
 const fbAuth = getAuth(fbApp);
 // Autenticación anónima requerida por Firebase Security Rules
 const authReady = signInAnonymously(fbAuth).catch(() => {});
