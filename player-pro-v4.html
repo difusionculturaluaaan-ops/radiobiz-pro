@@ -1335,7 +1335,8 @@ async function openClientLink(){
   if(document.getElementById('fadeDur')) params.append('fade',document.getElementById('fadeDur').value);
   if(currentFolderId) params.append('folder',currentFolderId);
   if(driveMusicFolderId) params.append('musicfolder',driveMusicFolderId);
-  if(curMode==='radio'&&musicAudio.src) params.append('radio',musicAudio.src);
+  // Always pass radio URL if available, regardless of mode
+  if(musicAudio.src && musicAudio.src.includes('http')) params.append('radio',musicAudio.src);
   const url='/player/cliente'+(params.toString()?'?'+params.toString():'');
   window.open(url,'clientPlayer','width=800,height=600');
 }
