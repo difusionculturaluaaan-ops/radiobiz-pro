@@ -329,7 +329,6 @@ function renderClientCards(container, list) {
         ${c.shortUrl ? `<span style="color:var(--green);font-weight:700;">${c.shortUrl}</span>` : generateLink(c)}
       </div>
       <div class="cc-actions">
-        <button class="ca-btn copy" onclick="copyClientLink('${c.id}')">📋 Copiar</button>
         <button class="ca-btn" onclick="openPlayer4('${c.id}')" title="Abrir Player V4 para programar">🎛️ V4</button>
         <button class="ca-btn qr" onclick="showQR('${c.id}')">📷 QR</button>
         <button class="ca-btn del" onclick="deleteClient('${c.id}')">🗑️</button>
@@ -1097,7 +1096,6 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
     <div class="page" id="page-clients">
       <div class="page-header">
         <div><h1>Clientes</h1><p>Gestiona todos tus negocios</p></div>
-        <button class="btn primary" onclick="openAddModal()">+ Nuevo cliente</button>
       </div>
       <div class="clients-grid" id="allClients"></div>
     </div>
