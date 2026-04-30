@@ -372,10 +372,12 @@ function applyParams() {
   // Load ad configuration
   if(PARAMS.intervalo) adIntervalMs = parseInt(PARAMS.intervalo) * 60000;
 
-  // Load spot folder and schedule ads
+  // Load spot folder and schedule ads (don't block if it fails)
   if(PARAMS.folder) {
-    loadSpots().then(() => {
-      scheduleAd(); // Start ad scheduling once spots load
+    loadSpots().catch(() => {
+      console.log('Spots unavailable, continuing without them');
+    }).finally(() => {
+      if(adIntervalMs) scheduleAd();
     });
   }
 
