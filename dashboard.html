@@ -406,6 +406,7 @@ window.saveClient = async () => {
   if(musicfolder && !cleanMusicFolder){toast('Folder ID de música inválido','error');return;}
   try {
     if(editingId) {
+      console.log('Guardando cliente:', {musicfolder: cleanMusicFolder});
       await fbUpdate('clients/'+editingId, {name,email,phone,campaign,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji});
       toast('✅ '+name+' actualizado','success');
     } else {
