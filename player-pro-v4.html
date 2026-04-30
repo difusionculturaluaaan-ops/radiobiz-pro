@@ -869,6 +869,11 @@ function applyParams() {
           driveMusicIndex = 0;
           selectDriveFile(0);
           console.log('✅ Carpeta Drive precargada en V4');
+          // Auto-play
+          setTimeout(() => {
+            playMusic();
+            console.log('▶️ Reproducción automática iniciada');
+          }, 300);
         }
       }, 200);
     }, 1500);
