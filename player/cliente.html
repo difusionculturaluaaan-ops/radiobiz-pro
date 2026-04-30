@@ -571,8 +571,9 @@ async function loadSpots() {
 
 function playAd() {
   if(!spotFiles || spotFiles.length === 0) {
-    // No hay spots, reproducir música directamente
+    // No hay spots, reproducir música y reschedule
     playMusic();
+    scheduleAd(); // Program next ad
     return;
   }
 
