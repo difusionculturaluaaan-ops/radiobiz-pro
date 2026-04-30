@@ -1285,8 +1285,15 @@ function log(msg,type){const el=document.getElementById('actLog');const now=new 
 // SAVE PROGRAMMING TO FIREBASE
 // ═══════════════════════════════════════════
 async function saveProgramming(){
+  console.log('📝 saveProgramming START');
   const clientId = fbClientId || PARAMS.cid;
-  if(!clientId) return false;
+  console.log('  clientId:', clientId, 'fbClientId:', fbClientId);
+  if(!clientId) {
+    console.log('  ❌ No clientId');
+    return false;
+  }
+  console.log('  fbDb:', window.fbDb);
+  console.log('  set function:', typeof set);
   try {
     const programming = {
       intervalo: parseInt(document.getElementById('adInt').value) || 5,
@@ -1300,10 +1307,15 @@ async function saveProgramming(){
       theme: document.documentElement.getAttribute('data-theme')||'dark',
       lastUpdated: new Date().toISOString()
     };
-    await set(ref(fbDb, 'clients/'+clientId+'/programming'), programming);
+    console.log('  programming object:', programming);
+    const path = 'clients/'+clientId+'/programming';
+    console.log('  Firebase path:', path);
+    console.log('  calling set()...');
+    await set(ref(fbDb, path), programming);
+    console.log('  ✅ Firebase set completed');
     return true;
   } catch(e) {
-    console.error('Error saving programming:', e);
+    console.error('  ❌ Error:', e.code, e.message);
     return false;
   }
 }
