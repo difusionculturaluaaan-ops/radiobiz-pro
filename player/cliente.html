@@ -553,18 +553,29 @@ function updateCountdown() {
 async function loadSpots() {
   const folderId = PARAMS.folder || programming?.spotFolder;
   if(!folderId) return;
+
   try {
-    const res = await fetch(`/api/drive/${folderId}`);
+    // Load from client's folder (which is a sub-folder inside RadioBiz-Jingles)
+    const url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'audio'&key=${API_KEY}&fields=files(id,name)&orderBy=modifiedTime+desc`;
+    const res = await fetch(url);
+
     if(!res.ok) {
-      console.warn(`Spots API unavailable (${res.status}), continuing without spots`);
+      console.warn(`Spots loading failed (${res.status}), continuing without spots`);
       spotFiles = [];
       return;
     }
+
     const data = await res.json();
-    spotFiles = data.files || [];
+    spotFiles = (data.files || []).map(f => ({ id: f.id, name: f.name }));
     spotIndex = 0;
+
+    if(spotFiles.length === 0) {
+      console.warn(`⚠️ No spots found in folder ${folderId}`);
+    } else {
+      console.log(`✅ Loaded ${spotFiles.length} spots`);
+    }
   } catch(e) {
-    console.error('Error loading spots:', e);
+    console.error('❌ Error loading spots:', e.message);
     spotFiles = [];
   }
 }
@@ -579,7 +590,10 @@ function playAd() {
 
   // Reproducir siguiente spot
   const spot = spotFiles[spotIndex % spotFiles.length];
-  adAudio.src = `https://drive.google.com/uc?export=download&id=${spot.id}`;
+
+  // Use Google Drive API directly (same as V4)
+  const streamUrl = `https://www.googleapis.com/drive/v3/files/${spot.id}?alt=media&key=${API_KEY}`;
+  adAudio.src = streamUrl;
   adAudio.volume = (programming?.volumeAd || 90) / 100;
   adAudio.play();
   playing = true;

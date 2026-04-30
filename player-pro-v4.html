@@ -1337,7 +1337,12 @@ async function openClientLink(){
   if(driveMusicFolderId) params.append('musicfolder',driveMusicFolderId);
   // Always pass radio URL if available, regardless of mode
   if(musicAudio.src && musicAudio.src.includes('http')) params.append('radio',musicAudio.src);
-  const url='/player/cliente'+(params.toString()?'?'+params.toString():'');
+
+  // Build URL - works in local (port 8000+) and production
+  let url = '/player/cliente.html';
+  if(params.toString()) url += '?' + params.toString();
+
+  console.log('✅ Abriendo V5 con parámetros:', params.toString());
   window.open(url,'clientPlayer','width=800,height=600');
 }
 </script>
