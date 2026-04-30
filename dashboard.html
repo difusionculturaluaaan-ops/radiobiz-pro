@@ -332,7 +332,6 @@ function renderClientCards(container, list) {
         <button class="ca-btn copy" onclick="copyClientLink('${c.id}')">📋 Copiar</button>
         <button class="ca-btn" onclick="openPlayer4('${c.id}')" title="Abrir Player V4 para programar">🎛️ V4</button>
         <button class="ca-btn qr" onclick="showQR('${c.id}')">📷 QR</button>
-        <button class="ca-btn edit" onclick="openEditModal('${c.id}')">✏️</button>
         <button class="ca-btn del" onclick="deleteClient('${c.id}')">🗑️</button>
       </div>
       ${!c.shortUrl ? `<button onclick="generateShortForClient('${c.id}')" style="width:100%;margin-top:7px;padding:7px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:.68rem;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;">🔗 Generar link corto</button>` : `<button onclick="resetClientLink('${c.id}')" style="width:100%;margin-top:7px;padding:7px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--accent2);font-size:.68rem;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;">🔄 Resetear link</button>`}
