@@ -998,15 +998,18 @@ function loadRadio(name){const url=document.getElementById('radioUrl').value.tri
 async function loadDriveMusic(folderId) {
   const id = folderId || document.getElementById('musicFolderId').value.trim() || driveMusicFolderId;
   if (!id) { log('⚠ Ingresa un Folder ID de música','info'); return; }
+  console.log('📁 loadDriveMusic llamado con:', id);
   driveMusicFolderId = id;
   document.getElementById('musicFolderId').value = id;
   document.getElementById('driveMusicList').innerHTML = '<div style="text-align:center;color:var(--info);font-family:\'JetBrains Mono\',monospace;font-size:.66rem;padding:12px 0;">🔄 Cargando playlist...</div>';
   const url = `https://www.googleapis.com/drive/v3/files?q='${id}'+in+parents+and+mimeType+contains+'audio'&key=${API_KEY}&fields=files(id,name,modifiedTime,size)&orderBy=name`;
   try {
+    console.log('📡 Fetching:', url.substring(0, 80) + '...');
     const r = await fetch(url);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
     const files = data.files || [];
+    console.log('✅ Archivos encontrados:', files.length);
     if (!files.length) {
       document.getElementById('driveMusicList').innerHTML = '<div style="text-align:center;color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:.66rem;padding:12px 0;">Sin archivos de audio en esta carpeta</div>';
       return;
@@ -1017,6 +1020,7 @@ async function loadDriveMusic(folderId) {
     localStorage.setItem('rbz_music_folder', id);
     log('☁️ Playlist Drive: ' + files.length + ' canciones', 'drive');
   } catch(e) {
+    console.error('❌ Error en loadDriveMusic:', e);
     document.getElementById('driveMusicList').innerHTML = `<div style="text-align:center;color:var(--warn);font-family:'JetBrains Mono',monospace;font-size:.66rem;padding:12px 0;">Error: ${e.message}</div>`;
     log('⚠ Error cargando música de Drive: ' + e.message);
   }
