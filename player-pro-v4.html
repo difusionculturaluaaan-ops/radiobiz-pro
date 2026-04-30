@@ -1280,7 +1280,42 @@ function log(msg,type){const el=document.getElementById('actLog');const now=new 
 // ═══════════════════════════════════════════
 // LINK CLIENTE (Player V5)
 // ═══════════════════════════════════════════
-function openClientLink(){
+// ═══════════════════════════════════════════
+// SAVE PROGRAMMING TO FIREBASE
+// ═══════════════════════════════════════════
+async function saveProgramming(){
+  const clientId = fbClientId || PARAMS.cid;
+  if(!clientId) return false;
+  try {
+    const programming = {
+      intervalo: parseInt(document.getElementById('adInt').value) || 5,
+      fade: parseInt(document.getElementById('fadeDur').value) || 2,
+      sourceMode: curMode || 'drive',
+      musicFolder: driveMusicFolderId || '',
+      spotFolder: currentFolderId || '',
+      radio: (curMode==='radio'?musicAudio.src:'') || '',
+      volumeMusic: parseInt(document.getElementById('volM').value) || 80,
+      volumeAd: parseInt(document.getElementById('volA').value) || 90,
+      theme: document.documentElement.getAttribute('data-theme')||'dark',
+      lastUpdated: new Date().toISOString()
+    };
+    await set(ref(fbDb, 'clients/'+clientId+'/programming'), programming);
+    return true;
+  } catch(e) {
+    console.error('Error saving programming:', e);
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════
+// OPEN CLIENT LINK (Player V5)
+// ═══════════════════════════════════════════
+async function openClientLink(){
+  const saved = await saveProgramming();
+  if(!saved) {
+    alert('No se pudo guardar la programación');
+    return;
+  }
   const params=new URLSearchParams();
   if(PARAMS.cid) params.append('cid',PARAMS.cid);
   if(PARAMS.code) params.append('code',PARAMS.code);
