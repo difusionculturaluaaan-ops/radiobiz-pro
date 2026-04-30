@@ -15,5 +15,13 @@
     "jingles"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "puppeteer": "^24.42.0"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "firebase-admin": "^13.8.0",
+    "googleapis": "^171.4.0"
+  }
 }
