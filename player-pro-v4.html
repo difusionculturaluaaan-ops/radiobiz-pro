@@ -650,7 +650,7 @@ const authReady = signInAnonymously(fbAuth).catch(() => {});
 
 // Session ID for this device
 const SESSION_ID = 'sess_' + Math.random().toString(36).substring(2,10);
-let fbClientId = null;
+window.fbClientId = null;
 let fbPingInterval = null;
 
 // Validate client access code against Firebase
@@ -669,7 +669,7 @@ window.fbValidateClient = async (clientId, code) => {
 // Register session (device connected)
 window.fbRegisterSession = async (clientId) => {
   await authReady;
-  fbClientId = clientId;
+  window.fbClientId = clientId;
   await set(ref(fbDb, 'sessions/'+SESSION_ID), {
     clientId, lastPing: Date.now(), userAgent: navigator.userAgent.substring(0,80)
   });
