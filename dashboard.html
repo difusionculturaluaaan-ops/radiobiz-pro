@@ -323,6 +323,7 @@ function renderClientCards(container, list) {
         ${c.shortUrl ? `<span style="color:var(--green);font-weight:700;">${c.shortUrl}</span>` : generateLink(c)}
       </div>
       <div class="cc-actions">
+        <button class="ca-btn edit" onclick="openEditModal('${c.id}')">✏️ Editar</button>
         <button class="ca-btn" onclick="openPlayer4('${c.id}')" title="Abrir Player V4 para programar">🎛️ V4</button>
         <button class="ca-btn qr" onclick="showQR('${c.id}')">📷 QR</button>
         <button class="ca-btn del" onclick="deleteClient('${c.id}')">🗑️</button>
