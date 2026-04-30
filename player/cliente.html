@@ -371,8 +371,9 @@ function applyParams() {
     setPreset(PARAMS.radio, 'Radio');
   } else if(PARAMS.musicfolder) {
     // Auto-load Drive music folder
+    console.log('🎵 Precargando carpeta de música:', PARAMS.musicfolder);
     document.getElementById('musicFolderId').value = PARAMS.musicfolder;
-    setTimeout(() => loadDriveMusic(), 800);
+    setTimeout(() => loadDriveMusic(PARAMS.musicfolder), 800);
   }
 
   // Load ad configuration
@@ -648,11 +649,12 @@ window.handleFiles = (e) => {
 };
 
 /* DRIVE */
-window.loadDriveMusic = async () => {
-  const folderId = document.getElementById('musicFolderId').value || currentFolderId;
+window.loadDriveMusic = async (folderId) => {
+  folderId = folderId || document.getElementById('musicFolderId').value || currentFolderId;
   if(!folderId) return;
 
   try {
+    console.log('🎵 Cargando música desde Drive:', folderId);
     const response = await fetch(`https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType)&key=${API_KEY}`);
     const data = await response.json();
     driveMusicFiles = data.files || [];
@@ -662,6 +664,7 @@ window.loadDriveMusic = async () => {
     if(driveMusicFiles.length > 0) {
       const fileId = driveMusicFiles[0].id;
       musicAudio.src = `https://drive.google.com/uc?export=download&id=${fileId}`;
+      console.log('✅ Música cargada de Drive');
     }
   } catch(e) {
     console.error('Error loading Drive:', e);
