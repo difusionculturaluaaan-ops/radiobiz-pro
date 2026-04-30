@@ -1324,11 +1324,9 @@ async function saveProgramming(){
 // OPEN CLIENT LINK (Player V5)
 // ═══════════════════════════════════════════
 async function openClientLink(){
-  const saved = await saveProgramming();
-  if(!saved) {
-    alert('No se pudo guardar la programación');
-    return;
-  }
+  // Try to save but don't block opening V5 if it fails
+  saveProgramming().catch(e => console.error('Save failed (continuing anyway):', e));
+
   const params=new URLSearchParams();
   if(PARAMS.cid) params.append('cid',PARAMS.cid);
   if(PARAMS.code) params.append('code',PARAMS.code);
