@@ -555,6 +555,11 @@ async function loadSpots() {
   if(!folderId) return;
   try {
     const res = await fetch(`/api/drive/${folderId}`);
+    if(!res.ok) {
+      console.warn(`Spots API unavailable (${res.status}), continuing without spots`);
+      spotFiles = [];
+      return;
+    }
     const data = await res.json();
     spotFiles = data.files || [];
     spotIndex = 0;
