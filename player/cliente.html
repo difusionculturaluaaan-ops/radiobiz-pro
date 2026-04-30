@@ -365,7 +365,20 @@ window.onload = async () => {
 function applyParams() {
   if(PARAMS.pin) PIN = PARAMS.pin;
   if(PARAMS.nombre) clientName = PARAMS.nombre;
+
+  // Load music source
   if(PARAMS.radio) setPreset(PARAMS.radio, 'Radio');
+
+  // Load ad configuration
+  if(PARAMS.intervalo) adIntervalMs = parseInt(PARAMS.intervalo) * 60000;
+
+  // Load spot folder and schedule ads
+  if(PARAMS.folder) {
+    loadSpots().then(() => {
+      scheduleAd(); // Start ad scheduling once spots load
+    });
+  }
+
   document.getElementById('tbClient').textContent = clientName;
 }
 
