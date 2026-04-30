@@ -1,0 +1,12 @@
+
+✅ RADIOBIZ PRO Server running at http://localhost:8000
+
+📍 URLs:
+   Dashboard:  http://localhost:8000/dashboard.html
+   Player V4:  http://localhost:8000/player-pro-v4.html
+   Player V5:  http://localhost:8000/player/cliente.html
+
+🎵 API Endpoint:
+   http://localhost:8000/api/drive/[folderId]
+
+

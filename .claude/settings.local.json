@@ -4,7 +4,10 @@
       "Bash(curl -s http://localhost:3000/player/c_test)",
       "Bash(pkill -f \"next dev\")",
       "Bash(awk '{print $2}')",
-      "Bash(xargs kill *)"
+      "Bash(xargs kill *)",
+      "Bash(node server-local.js)",
+      "Bash(curl -s http://localhost:8000/dashboard.html)",
+      "Bash(pkill -f \"node server-local.js\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\image\\Documents\\radiobiz-next",

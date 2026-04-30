@@ -366,8 +366,14 @@ function applyParams() {
   if(PARAMS.pin) PIN = PARAMS.pin;
   if(PARAMS.nombre) clientName = PARAMS.nombre;
 
-  // Load music source
-  if(PARAMS.radio) setPreset(PARAMS.radio, 'Radio');
+  // Load music source - prioritize radio, then Drive music folder
+  if(PARAMS.radio) {
+    setPreset(PARAMS.radio, 'Radio');
+  } else if(PARAMS.musicfolder) {
+    // Auto-load Drive music folder
+    document.getElementById('musicFolderId').value = PARAMS.musicfolder;
+    setTimeout(() => loadDriveMusic(), 800);
+  }
 
   // Load ad configuration
   if(PARAMS.intervalo) adIntervalMs = parseInt(PARAMS.intervalo) * 60000;

@@ -855,10 +855,14 @@ function applyParams() {
 
   // Auto-load Drive music folder from URL param or localStorage
   const savedMusicFolder = PARAMS.musicfolder || localStorage.getItem('rbz_music_folder');
+  console.log('🎵 Intentando cargar carpeta de música:', savedMusicFolder);
   if(savedMusicFolder) {
     driveMusicFolderId = savedMusicFolder;
     document.getElementById('musicFolderId').value = savedMusicFolder;
-    setTimeout(() => loadDriveMusic(savedMusicFolder), 1500);
+    setTimeout(() => {
+      console.log('📁 Cargando drive music...');
+      loadDriveMusic(savedMusicFolder);
+    }, 1500);
   }
 
   // Apply locked mode
