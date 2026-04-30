@@ -859,9 +859,18 @@ function applyParams() {
   if(savedMusicFolder) {
     driveMusicFolderId = savedMusicFolder;
     document.getElementById('musicFolderId').value = savedMusicFolder;
-    setTimeout(() => {
+    setTimeout(async () => {
       console.log('📁 Cargando drive music...');
-      loadDriveMusic(savedMusicFolder);
+      await loadDriveMusic(savedMusicFolder);
+      // Auto-switch to Drive tab and render
+      setTimeout(() => {
+        switchTab('drive');
+        if(driveMusicFiles.length > 0) {
+          driveMusicIndex = 0;
+          selectDriveFile(0);
+          console.log('✅ Carpeta Drive precargada en V4');
+        }
+      }, 200);
     }, 1500);
   }
 
