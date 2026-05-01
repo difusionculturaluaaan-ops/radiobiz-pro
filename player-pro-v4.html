@@ -937,7 +937,7 @@ async function syncDrive() {
   if(!currentFolderId)return;
   setDriveStatus('loading','Sincronizando...');
   document.getElementById('drivePill').className='pill'; document.getElementById('driveTxt').textContent='Syncing...';
-  const url=`https://www.googleapis.com/drive/v3/files?q='${currentFolderId}'+in+parents+and+mimeType+contains+'audio'&key=${API_KEY}&fields=files(id,name,modifiedTime)&orderBy=name`;
+  const url=`https://www.googleapis.com/drive/v3/files?q='${currentFolderId}'+in+parents+and+(mimeType='audio/mpeg'+or+mimeType='audio/wav'+or+mimeType='audio/ogg'+or+mimeType='audio/mp4'+or+mimeType='audio/x-m4a')&key=${API_KEY}&fields=files(id,name,modifiedTime)&orderBy=name`;
   try {
     const r=await fetch(url); if(!r.ok) throw new Error('HTTP '+r.status);
     const data=await r.json(); const files=data.files||[];
@@ -1001,7 +1001,7 @@ async function loadDriveMusic(folderId) {
   driveMusicFolderId = id;
   document.getElementById('musicFolderId').value = id;
   document.getElementById('driveMusicList').innerHTML = '<div style="text-align:center;color:var(--info);font-family:\'JetBrains Mono\',monospace;font-size:.66rem;padding:12px 0;">🔄 Cargando playlist...</div>';
-  const url = `https://www.googleapis.com/drive/v3/files?q='${id}'+in+parents+and+mimeType+contains+'audio'&key=${API_KEY}&fields=files(id,name,modifiedTime,size)&orderBy=name`;
+  const url = `https://www.googleapis.com/drive/v3/files?q='${id}'+in+parents+and+(mimeType='audio/mpeg'+or+mimeType='audio/wav'+or+mimeType='audio/ogg'+or+mimeType='audio/mp4'+or+mimeType='audio/x-m4a')&key=${API_KEY}&fields=files(id,name,modifiedTime,size)&orderBy=name`;
   try {
     console.log('📡 Fetching:', url.substring(0, 80) + '...');
     const r = await fetch(url);

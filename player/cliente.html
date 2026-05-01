@@ -563,7 +563,7 @@ async function loadSpots() {
 
   try {
     // Load from client's folder (which is a sub-folder inside RadioBiz-Jingles)
-    const url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'audio'&key=${API_KEY}&fields=files(id,name)&orderBy=modifiedTime+desc`;
+    const url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+(mimeType='audio/mpeg'+or+mimeType='audio/wav'+or+mimeType='audio/ogg'+or+mimeType='audio/mp4'+or+mimeType='audio/x-m4a')&key=${API_KEY}&fields=files(id,name)&orderBy=modifiedTime+desc`;
     const res = await fetch(url);
 
     if(!res.ok) {
