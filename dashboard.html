@@ -212,8 +212,12 @@ function generateCode() {
 window.goPage = id => {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  document.getElementById('nav-'+id).classList.add('active');
+  const navEl = document.getElementById('nav-'+id);
+  if(navEl) navEl.classList.add('active');
+  const mobileNavEl = document.getElementById('mobile-nav-'+id);
+  if(mobileNavEl) mobileNavEl.classList.add('active');
   if(id==='clients') renderAllClients();
   if(id==='overview') renderOverview();
   if(id==='control') renderCtrlTabs();
@@ -1002,15 +1006,27 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
 .fb-status{display:flex;align-items:center;gap:6px;font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--green);}
 .fb-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
 
+/* MOBILE NAVIGATION */
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--s1);border-top:1px solid var(--border2);justify-content:space-around;align-items:stretch;z-index:999;box-shadow:0 -2px 8px rgba(0,0,0,.1);}
+.mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:var(--muted);transition:all .2s;border-top:2px solid transparent;position:relative;}
+.mobile-nav-item:active{background:var(--s2);}
+.mobile-nav-item.active{color:var(--accent);border-top-color:var(--accent);}
+.mni-icon{font-size:1.2rem;line-height:1;}
+.mni-label{font-size:.55rem;font-weight:700;font-family:'Syne',sans-serif;text-align:center;white-space:nowrap;}
+
 @media(max-width:900px){.overview-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:700px){
   .sidebar{display:none;}
-  .content{padding:16px;}
+  .mobile-nav{display:flex;}
+  .shell{flex-direction:column;}
+  .content{padding:16px 16px 76px 16px;flex:1;overflow-y:auto;}
   .overview-grid{grid-template-columns:repeat(2,1fr);}
   .ctrl-grid{grid-template-columns:repeat(2,1fr);}
   .ctrl-sliders{grid-template-columns:1fr;}
   .form-grid{grid-template-columns:1fr;}
   .form-full{grid-column:span 1;}
+  .page-header{flex-direction:column;align-items:flex-start;}
+  .page-header button{width:100%;}
 }
 </style>
 </head>
@@ -1220,6 +1236,30 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
     </div>
   </div>
 </div>
+
+<!-- MOBILE NAVIGATION (bottom tab bar) -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-item active" onclick="goPage('overview')" id="mobile-nav-overview">
+    <span class="mni-icon">🏠</span>
+    <span class="mni-label">Inicio</span>
+  </div>
+  <div class="mobile-nav-item" onclick="goPage('clients')" id="mobile-nav-clients">
+    <span class="mni-icon">🏢</span>
+    <span class="mni-label">Clientes</span>
+  </div>
+  <div class="mobile-nav-item" onclick="goPage('pagos')" id="mobile-nav-pagos">
+    <span class="mni-icon">💰</span>
+    <span class="mni-label">Pagos</span>
+  </div>
+  <div class="mobile-nav-item" onclick="goPage('control')" id="mobile-nav-control">
+    <span class="mni-icon">🎛️</span>
+    <span class="mni-label">Control</span>
+  </div>
+  <div class="mobile-nav-item" onclick="goPage('settings')" id="mobile-nav-settings">
+    <span class="mni-icon">⚙️</span>
+    <span class="mni-label">Config</span>
+  </div>
+</nav>
 
 <!-- QR MODAL -->
 <div class="modal-bg" id="qrModal">
