@@ -300,56 +300,60 @@ body.locked .force-btn{display:none;}
   .topbar{padding:10px 12px;}
   .tb-ver,.tb-client,.locked-badge,.wakelock-pill,.icon-btn:not(.lock-only){display:none!important;}
   .tb-right .pill:not(#statusPill){display:none;}
-  .icon-btn{padding:6px 10px;font-size:.65rem;}
+  .icon-btn{padding:10px 14px;font-size:.65rem;min-height:44px;min-width:44px;}
 
   /* Player compacto */
-  .player-card{padding:16px;}
-  .track-row{gap:12px;margin-bottom:14px;}
-  .vinyl{width:54px;height:54px;font-size:1.2rem;}
-  .vinyl::after{width:13px;height:13px;}
-  .track-meta h2{font-size:.88rem;max-width:calc(100vw - 120px);}
-  .track-meta p{font-size:.64rem;}
-  .time-row{margin-bottom:14px;}
-  .ctrl-row{gap:14px;margin-bottom:13px;}
-  .play-btn{width:48px;height:48px;font-size:1.1rem;}
-  .vol-row label{width:55px;font-size:.62rem;}
-  .vv{width:26px;font-size:.6rem;}
+  .player-card{padding:18px;margin:0;}
+  .track-row{gap:14px;margin-bottom:16px;}
+  .vinyl{width:58px;height:58px;font-size:1.2rem;}
+  .vinyl::after{width:14px;height:14px;}
+  .track-meta h2{font-size:.92rem;max-width:calc(100vw - 140px);}
+  .track-meta p{font-size:.66rem;}
+  .time-row{margin-bottom:16px;font-size:.65rem;}
+  .ctrl-row{gap:16px;margin-bottom:16px;}
+  .cbtn{padding:12px;min-height:44px;min-width:44px;}
+  .play-btn{width:52px;height:52px;font-size:1.2rem;}
+  .vol-row{gap:12px;margin-bottom:12px;}
+  .vol-row label{width:auto;font-size:.66rem;}
+  input[type=range]{height:24px;min-height:44px;-webkit-appearance:none;appearance:none;cursor:pointer;}
+  .vv{width:35px;font-size:.64rem;}
 
   /* Ad banner */
-  .ad-btext h3{font-size:.76rem;}
-  .ad-btext p{font-size:.6rem;}
-  .next-ad .nl{font-size:.58rem;}
-  .next-ad .nt{font-size:.82rem;}
-  .force-btn{font-size:.6rem;padding:4px 8px;}
+  .ad-btext h3{font-size:.8rem;}
+  .ad-btext p{font-size:.64rem;}
+  .next-ad{padding:12px 14px;}
+  .next-ad .nl{font-size:.62rem;}
+  .next-ad .nt{font-size:.86rem;}
+  .force-btn{font-size:.64rem;padding:6px 12px;min-height:40px;}
 
   /* Stats */
-  .stats-grid{gap:7px;}
-  .stat-card{padding:10px 8px;}
-  .stat-card .sv{font-size:1.3rem;}
-  .stat-card .sl2{font-size:.5rem;}
+  .stats-grid{gap:8px;grid-template-columns:repeat(3,1fr);}
+  .stat-card{padding:12px 10px;}
+  .stat-card .sv{font-size:1.4rem;}
+  .stat-card .sl2{font-size:.53rem;}
 
   /* Settings */
   .sg{grid-template-columns:1fr;}
-  .settings-card{padding:15px;}
+  .settings-card{padding:18px;}
 
   /* Tabs */
-  .tab{padding:6px 10px;font-size:.68rem;}
+  .tab{padding:8px 12px;font-size:.7rem;min-height:40px;}
 
   /* Jingle queue */
-  .jqueue{max-height:150px;}
-  .jq{font-size:.7rem;padding:8px 10px;}
+  .jqueue{max-height:160px;}
+  .jq{font-size:.72rem;padding:10px 12px;min-height:44px;}
 
   /* Log */
-  .log{font-size:.58rem;max-height:75px;}
+  .log{font-size:.6rem;max-height:80px;}
 
   /* Pin compacto */
-  #pinScreen{gap:16px;padding:16px;}
-  .logo-mark{width:46px;height:46px;font-size:1.2rem;}
-  .pin-brand h1{font-size:1.2rem;}
-  .pin-card{padding:22px 18px;}
-  .pk{padding:13px 6px;font-size:1.1rem;}
-  .pin-dots{gap:10px;margin-bottom:18px;}
-  .pin-dot{width:12px;height:12px;}
+  #pinScreen{gap:18px;padding:18px;}
+  .logo-mark{width:48px;height:48px;font-size:1.3rem;}
+  .pin-brand h1{font-size:1.25rem;}
+  .pin-card{padding:24px 20px;}
+  .pk{padding:15px 8px;font-size:1.15rem;min-height:44px;}
+  .pin-dots{gap:11px;margin-bottom:20px;}
+  .pin-dot{width:13px;height:13px;}
 }
 
 /* Phones pequeños */
