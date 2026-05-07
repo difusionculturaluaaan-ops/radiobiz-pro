@@ -225,6 +225,22 @@ window.goPage = id => {
   if(id==='settings') document.getElementById('baseUrlInput').value=BASE_URL;
 };
 
+// ═══ MOBILE MENU ═══
+window.toggleMobileMenu = () => {
+  const menu = document.getElementById('mobileMenu');
+  const overlay = document.getElementById('mobileMenuOverlay');
+  menu.classList.toggle('open');
+  overlay.classList.toggle('open');
+};
+window.closeMobileMenu = () => {
+  document.getElementById('mobileMenu').classList.remove('open');
+  document.getElementById('mobileMenuOverlay').classList.remove('open');
+};
+window.goPageAndCloseMenu = id => {
+  goPage(id);
+  closeMobileMenu();
+};
+
 // ═══ RENDER ═══
 function renderOverview() {
   updateOverviewStats();
@@ -1006,6 +1022,19 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
 .fb-status{display:flex;align-items:center;gap:6px;font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--green);}
 .fb-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
 
+/* MOBILE MENU HAMBURGER */
+.mobile-menu-btn{display:none;position:fixed;top:16px;left:16px;width:44px;height:44px;background:var(--s1);border:1px solid var(--border2);border-radius:10px;font-size:1.4rem;cursor:pointer;z-index:1000;transition:all .2s;}
+.mobile-menu-btn:active{background:var(--s2);}
+.mobile-menu-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:998;transition:opacity .3s;}
+.mobile-menu-overlay.open{display:block;}
+.mobile-menu{position:fixed;top:0;left:0;width:280px;height:100vh;background:var(--s1);border-right:1px solid var(--border2);z-index:999;transform:translateX(-100%);transition:transform .3s cubic-bezier(.34,1.56,.64,1);overflow-y:auto;display:flex;flex-direction:column;}
+.mobile-menu.open{transform:translateX(0);}
+.mobile-menu-header{padding:18px 16px;border-bottom:1px solid var(--border2);display:flex;justify-content:space-between;align-items:center;font-size:.95rem;}
+.mobile-menu-items{flex:1;padding:8px 8px;}
+.mobile-menu-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;cursor:pointer;color:var(--text);font-size:.85rem;font-weight:600;transition:all .2s;border:none;background:none;}
+.mobile-menu-item:active{background:var(--s2);}
+.mobile-menu-item span{font-size:1.1rem;}
+
 /* MOBILE NAVIGATION */
 .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--s1);border-top:1px solid var(--border2);justify-content:space-around;align-items:stretch;z-index:999;box-shadow:0 -2px 8px rgba(0,0,0,.1);}
 .mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:var(--muted);transition:all .2s;border-top:2px solid transparent;position:relative;}
@@ -1017,9 +1046,10 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
 @media(max-width:900px){.overview-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:700px){
   .sidebar{display:none;}
+  .mobile-menu-btn{display:block;}
   .mobile-nav{display:flex;}
   .shell{flex-direction:column;}
-  .content{padding:16px 16px 76px 16px;flex:1;overflow-y:auto;}
+  .content{padding:16px 16px 16px 16px;flex:1;overflow-y:auto;margin-top:60px;}
   .overview-grid{grid-template-columns:repeat(2,1fr);}
   .ctrl-grid{grid-template-columns:repeat(2,1fr);}
   .ctrl-sliders{grid-template-columns:1fr;}
@@ -1084,6 +1114,27 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
       <button class="lock-btn" onclick="lockDash()">🔒 Cerrar sesión</button>
     </div>
   </nav>
+
+  <!-- MOBILE MENU HAMBURGER -->
+  <button class="mobile-menu-btn" onclick="toggleMobileMenu()" id="mobileMenuBtn">☰</button>
+  <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
+  <div class="mobile-menu" id="mobileMenu">
+    <div class="mobile-menu-header">
+      <div style="font-weight:800;font-size:1rem;">RadioBiz Pro</div>
+      <button onclick="closeMobileMenu()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div class="mobile-menu-items">
+      <div class="mobile-menu-item" onclick="goPageAndCloseMenu('overview')"><span>🏠</span>Inicio</div>
+      <div class="mobile-menu-item" onclick="goPageAndCloseMenu('clients')"><span>🏢</span>Clientes</div>
+      <div class="mobile-menu-item" onclick="goPageAndCloseMenu('pagos')"><span>💰</span>Pagos</div>
+      <div class="mobile-menu-item" onclick="goPageAndCloseMenu('control')"><span>🎛️</span>Control remoto</div>
+      <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+      <div class="mobile-menu-item" onclick="goPageAndCloseMenu('settings')"><span>⚙️</span>Configuración</div>
+      <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+      <div class="mobile-menu-item" onclick="toggleTheme();closeMobileMenu()" style="font-size:.9rem;color:var(--muted);"><span id="mobileThemeIcon">☀️</span><span id="mobileThemeTxt">Modo claro</span></div>
+      <div class="mobile-menu-item" onclick="lockDash()" style="font-size:.9rem;color:var(--red);"><span>🔒</span>Cerrar sesión</div>
+    </div>
+  </div>
 
   <!-- CONTENT -->
   <div class="content">
