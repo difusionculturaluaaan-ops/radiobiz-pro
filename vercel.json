@@ -10,6 +10,10 @@
       "dest": "/player/cliente.html"
     },
     {
+      "src": "/p",
+      "dest": "/player-pro-v4.html"
+    },
+    {
       "src": "/player",
       "dest": "/player-pro-v4.html"
     },
