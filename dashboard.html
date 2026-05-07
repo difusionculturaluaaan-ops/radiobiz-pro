@@ -47,6 +47,20 @@ function fbListen(path, cb) { onValue(ref(db, path), s => cb(s.exists() ? s.val(
 // ═══ BOOT ═══
 window.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  // Show mobile menu button on small screens
+  const showMobileMenuBtn = () => {
+    const btn = document.getElementById('mobileMenuBtn');
+    const header = document.querySelector('.mobile-header');
+    if(window.innerWidth <= 700) {
+      if(btn) btn.style.display = 'block';
+      if(header) header.style.display = 'block';
+    } else {
+      if(btn) btn.style.display = 'none';
+      if(header) header.style.display = 'none';
+    }
+  };
+  showMobileMenuBtn();
+  window.addEventListener('resize', showMobileMenuBtn);
   document.getElementById('baseUrlInput').value = BASE_URL;
   document.getElementById('loginEmail').addEventListener('keydown', e => {
     if(e.key === 'Enter') doLogin();
