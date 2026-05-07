@@ -1023,17 +1023,18 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
 .fb-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
 
 /* MOBILE MENU HAMBURGER */
-.mobile-menu-btn{display:none;position:fixed;top:16px;left:16px;width:44px;height:44px;background:var(--s1);border:1px solid var(--border2);border-radius:10px;font-size:1.4rem;cursor:pointer;z-index:1000;transition:all .2s;}
-.mobile-menu-btn:active{background:var(--s2);}
-.mobile-menu-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:998;transition:opacity .3s;}
+.mobile-header{display:none;margin-bottom:18px;}
+.mobile-menu-btn{display:none;background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;cursor:pointer;font-size:.9rem;font-weight:700;color:var(--text);transition:all .2s;font-family:'Syne',sans-serif;width:100%;}
+.mobile-menu-btn:active{background:var(--s3);}
+.mobile-menu-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:998;transition:opacity .3s;}
 .mobile-menu-overlay.open{display:block;}
 .mobile-menu{position:fixed;top:0;left:0;width:280px;height:100vh;background:var(--s1);border-right:1px solid var(--border2);z-index:999;transform:translateX(-100%);transition:transform .3s cubic-bezier(.34,1.56,.64,1);overflow-y:auto;display:flex;flex-direction:column;}
 .mobile-menu.open{transform:translateX(0);}
-.mobile-menu-header{padding:18px 16px;border-bottom:1px solid var(--border2);display:flex;justify-content:space-between;align-items:center;font-size:.95rem;}
+.mobile-menu-header{padding:18px 16px;border-bottom:1px solid var(--border2);display:flex;justify-content:space-between;align-items:center;font-size:.95rem;font-weight:800;}
 .mobile-menu-items{flex:1;padding:8px 8px;}
 .mobile-menu-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;cursor:pointer;color:var(--text);font-size:.85rem;font-weight:600;transition:all .2s;border:none;background:none;}
 .mobile-menu-item:active{background:var(--s2);}
-.mobile-menu-item span{font-size:1.1rem;}
+.mobile-menu-item span{font-size:1.1rem;width:20px;text-align:center;}
 
 /* MOBILE NAVIGATION */
 .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--s1);border-top:1px solid var(--border2);justify-content:space-around;align-items:stretch;z-index:999;box-shadow:0 -2px 8px rgba(0,0,0,.1);}
@@ -1046,10 +1047,11 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
 @media(max-width:900px){.overview-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:700px){
   .sidebar{display:none;}
+  .mobile-header{display:block;}
   .mobile-menu-btn{display:block;}
   .mobile-nav{display:flex;}
   .shell{flex-direction:column;}
-  .content{padding:16px 16px 16px 16px;flex:1;overflow-y:auto;margin-top:60px;}
+  .content{padding:16px;}
   .overview-grid{grid-template-columns:repeat(2,1fr);}
   .ctrl-grid{grid-template-columns:repeat(2,1fr);}
   .ctrl-sliders{grid-template-columns:1fr;}
@@ -1115,13 +1117,14 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
     </div>
   </nav>
 
-  <!-- MOBILE MENU HAMBURGER -->
-  <button class="mobile-menu-btn" onclick="toggleMobileMenu()" id="mobileMenuBtn">☰</button>
+  <!-- MOBILE MENU OVERLAY -->
   <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
+
+  <!-- MOBILE MENU -->
   <div class="mobile-menu" id="mobileMenu">
     <div class="mobile-menu-header">
       <div style="font-weight:800;font-size:1rem;">RadioBiz Pro</div>
-      <button onclick="closeMobileMenu()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✕</button>
+      <button onclick="closeMobileMenu()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text);">✕</button>
     </div>
     <div class="mobile-menu-items">
       <div class="mobile-menu-item" onclick="goPageAndCloseMenu('overview')"><span>🏠</span>Inicio</div>
@@ -1138,6 +1141,10 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
 
   <!-- CONTENT -->
   <div class="content">
+    <!-- Mobile Menu Button (shown only on mobile) -->
+    <div class="mobile-header">
+      <button class="mobile-menu-btn" onclick="toggleMobileMenu()" id="mobileMenuBtn">☰ Menú</button>
+    </div>
 
     <!-- OVERVIEW -->
     <div class="page active" id="page-overview">
