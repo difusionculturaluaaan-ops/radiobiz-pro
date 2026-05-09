@@ -7,7 +7,15 @@
       "Bash(xargs kill *)",
       "Bash(node server-local.js)",
       "Bash(curl -s http://localhost:8000/dashboard.html)",
-      "Bash(pkill -f \"node server-local.js\")"
+      "Bash(pkill -f \"node server-local.js\")",
+      "Read(//c/Users/image/.claude/projects/c--Users-image-Documents-RADIOBIZ-PRO/**)",
+      "WebSearch",
+      "WebFetch(domain:hackmd.io)",
+      "WebFetch(domain:firebase.google.com)",
+      "Bash(curl -s http://localhost:3000/login)",
+      "Bash(node create-demo-user.js)",
+      "Bash(curl -X POST http://localhost:3001/api/auth/create-demo-user -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(npm run *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\image\\Documents\\radiobiz-next",
