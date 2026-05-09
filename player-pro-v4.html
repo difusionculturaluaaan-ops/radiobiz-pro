@@ -766,6 +766,8 @@ window.onload = async () => {
       showAccessDenied(result.reason || 'Acceso no autorizado');
       return;
     }
+    // Use PIN from Firebase (overrides URL param — PIN no longer sent in URL)
+    if(result.client && result.client.pin) PIN = result.client.pin;
     // Register session
     if(window.fbRegisterSession) await window.fbRegisterSession(PARAMS.cid);
     // Listen for block changes

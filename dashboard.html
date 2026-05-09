@@ -209,12 +209,11 @@ function generateLink(c) {
   const p = new URLSearchParams({
     nombre: c.name,
     folder: c.folder,
-    pin: c.pin,
     intervalo: c.intervalo,
     locked: '1',
     fade: c.fade||'2',
-    code: c.code, // unique access code
-    cid: c.id,   // client ID for session tracking
+    code: c.code,
+    cid: c.id,
   });
   if(c.radio) p.set('radio', c.radio);
   if(c.musicfolder) p.set('musicfolder', c.musicfolder);
@@ -351,7 +350,7 @@ function renderClientCards(container, list) {
         <div class="cc-avatar">${c.emoji||'🏪'}</div>
         <div style="flex:1;min-width:0;">
           <div class="cc-name">${c.name} ${isBlocked?'<span style="font-size:.6rem;background:var(--red)22;color:var(--red);border:1px solid var(--red)40;border-radius:99px;padding:1px 7px;">BLOQUEADO</span>':''}</div>
-          <div class="cc-sub">PIN: ${c.pin} · ${c.intervalo} min · ${radioName}</div>
+          <div class="cc-sub">PIN: •••• · ${c.intervalo} min · ${radioName}</div>
         </div>
         <button onclick="toggleBlock('${c.id}')" style="background:${isBlocked?'var(--green)18':'var(--red)12'};border:1px solid ${isBlocked?'var(--green)40':'var(--red)30'};color:${isBlocked?'var(--green)':'var(--red)'};border-radius:8px;padding:5px 10px;cursor:pointer;font-size:.65rem;font-weight:700;font-family:'Syne',sans-serif;white-space:nowrap;">
           ${isBlocked?'✅ Activar':'🚫 Bloquear'}
