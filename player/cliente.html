@@ -415,8 +415,17 @@ window.pb = () => {
   updatePinDots();
 };
 
-window.ps = () => {
-  if(pinBuf === PIN) {
+async function hashPin(pin) {
+  const data = new TextEncoder().encode(pin);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+window.ps = async () => {
+  const entered = pinBuf;
+  const isHashed = PIN && PIN.length === 64;
+  const match = isHashed ? (await hashPin(entered) === PIN) : (entered === PIN);
+  if(match) {
     document.getElementById('pinScreen').style.display = 'none';
     document.getElementById('app').classList.add('show');
     localStorage.setItem('rbz_pin_v5', PIN);

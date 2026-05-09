@@ -918,10 +918,18 @@ function initTheme() { const s=localStorage.getItem('rbz_theme')||'dark'; docume
 // ═══════════════════════════════════════════
 // PIN
 // ═══════════════════════════════════════════
+async function hashPin(pin) {
+  const data = new TextEncoder().encode(pin);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 function pk(k) { if(pinBuf.length>=4)return; pinBuf+=k; for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('on',i<pinBuf.length); if(pinBuf.length===4) setTimeout(ps,180); }
 function pb() { pinBuf=pinBuf.slice(0,-1); for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('on',i<pinBuf.length); }
-function ps() {
-  if(pinBuf===PIN){ document.getElementById('pinScreen').style.display='none'; document.getElementById('app').classList.add('show'); log('🔓 Acceso concedido','ok'); }
+async function ps() {
+  const entered = pinBuf;
+  const isHashed = PIN && PIN.length === 64;
+  const match = isHashed ? (await hashPin(entered) === PIN) : (entered === PIN);
+  if(match){ document.getElementById('pinScreen').style.display='none'; document.getElementById('app').classList.add('show'); log('🔓 Acceso concedido','ok'); }
   else { document.getElementById('pinErr').textContent='PIN incorrecto'; pinBuf=''; for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.remove('on'); setTimeout(()=>document.getElementById('pinErr').textContent='',2200); }
 }
 function lockApp() { pinBuf=''; for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.remove('on'); document.getElementById('pinScreen').style.display='flex'; document.getElementById('app').classList.remove('show'); if(kioskMode)toggleKiosk(); log('🔒 Bloqueado'); }

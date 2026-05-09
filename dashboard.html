@@ -129,8 +129,11 @@ function initTheme(){
 function initApp() {
   document.getElementById('overviewDate').textContent =
     new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  // Clean old sessions on startup
+  // Clean old sessions on startup + automatically every hour
   cleanOldSessions();
+  setInterval(cleanOldSessions, 60 * 60 * 1000);
+  // Migrate plain-text PINs to SHA-256
+  migratePins();
   // Listen to clients in real time
   fbListen('clients', data => {
     clients = data || {};
@@ -220,6 +223,26 @@ function generateLink(c) {
 
 function generateCode() {
   return Math.random().toString(36).substring(2,10).toUpperCase();
+}
+
+// ═══ PIN SECURITY (SHA-256) ═══
+async function hashPin(pin) {
+  const data = new TextEncoder().encode(pin);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function isHashed(pin) { return pin && pin.length === 64; }
+
+// Migrate plain-text PINs to SHA-256 on startup
+async function migratePins() {
+  const all = await fbGet('clients');
+  if(!all) return;
+  for(const [id, c] of Object.entries(all)) {
+    if(c.pin && !isHashed(c.pin)) {
+      const hashed = await hashPin(c.pin);
+      await fbUpdate('clients/'+id, { pin: hashed });
+    }
+  }
 }
 
 // ═══ NAVIGATION ═══
@@ -419,6 +442,7 @@ window.saveClient = async () => {
   if(!name){toast('El nombre es requerido','error');return;}
   if(!folder){toast('El Folder ID es requerido','error');return;}
   if(!/^\d{4}$/.test(pin)){toast('El PIN debe ser 4 dígitos','error');return;}
+  const pinHash = await hashPin(pin);
 
   // Extract folder ID from URL or use directly if it's just the ID
   const extractId = (val) => {
@@ -441,12 +465,12 @@ window.saveClient = async () => {
   try {
     if(editingId) {
       console.log('Guardando cliente:', {musicfolder: cleanMusicFolder});
-      await fbUpdate('clients/'+editingId, {name,email,phone,campaign,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji});
+      await fbUpdate('clients/'+editingId, {name,email,phone,campaign,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin:pinHash,intervalo,fade,emoji});
       toast('✅ '+name+' actualizado','success');
     } else {
       const id = 'c_'+Date.now();
       const code = generateCode();
-      await fbSet('clients/'+id, {id,name,email,phone,campaign,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin,intervalo,fade,emoji,code,blocked:false,createdAt:Date.now()});
+      await fbSet('clients/'+id, {id,name,email,phone,campaign,folder:cleanFolder,radio,musicfolder:cleanMusicFolder,pin:pinHash,intervalo,fade,emoji,code,blocked:false,createdAt:Date.now()});
       toast('✅ '+name+' creado — generando link corto...','success');
       // Auto-generate short URL
       setTimeout(async () => {
