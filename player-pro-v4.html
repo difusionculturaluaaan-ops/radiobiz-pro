@@ -1244,7 +1244,7 @@ function playAd(){
   const jingle=driveJingles[jingleIndex];
   const src=`https://www.googleapis.com/drive/v3/files/${jingle.id}?alt=media&key=${API_KEY}`;
   musicAudio.pause();adPlaying=true;
-  adAudio.src=src;adAudio.volume=document.getElementById('volA').value/100;adAudio.play().then(()=>{log('📢 Ad iniciado');}).catch(e=>{log('Error ad: '+e.message);});
+  adAudio.src=src;adAudio.volume=document.getElementById('volA').value/100;adAudio.play().then(()=>{isLoading=false;log('📢 Ad iniciado');}).catch(e=>{isLoading=false;log('Error ad: '+e.message);});
   const biz=document.getElementById('bizName').value||'Tu Negocio';
   document.getElementById('adTitle').textContent='📢 '+biz.toUpperCase();
   document.getElementById('adSub').textContent=`Jingle ${jingleIndex+1}/${driveJingles.length} — ${jingle.name.replace(/\.[^.]+$/,'')}`;
