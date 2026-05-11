@@ -734,6 +734,7 @@ let PIN = PARAMS.pin || localStorage.getItem('rbz_pin') || '1234';
 let isLocked = PARAMS.locked;
 let pinBuf = '';
 let playing = false, adPlaying = false, isFading = false;
+let isLoading = false; // Evita race conditions en play() / pause()
 let adIntervalMs = (PARAMS.intervalo ? parseInt(PARAMS.intervalo) : 10) * 60000;
 let adTimer = null, cdTimer = null, nextAdAt = null;
 let adDur = 0, adRingTimer = null;
@@ -1072,7 +1073,7 @@ function selectDriveTrack(i) {
   document.getElementById('trackName').textContent = f.name.replace(/\.[^.]+$/,'');
   document.getElementById('trackSrc').textContent = '☁️ Drive · ' + String(i+1) + '/' + driveMusicFiles.length;
   renderDriveMusicList();
-  if (playing) musicAudio.play();
+  if (playing && !isLoading) { isLoading = true; musicAudio.play().then(() => isLoading = false).catch(e => { isLoading = false; log('Error: ' + e.message); }); }
   log('☁️ Drive track: ' + f.name, 'drive');
 }
 
@@ -1139,14 +1140,20 @@ document.addEventListener('visibilitychange', () => {
 function togglePlay(){if(adPlaying||isFading)return;playing?pauseMusic():playMusic();}
 function playMusic(){
   if(!musicAudio.src||musicAudio.src===location.href){log('⚠ Sin fuente de audio');return;}
+  if(isLoading) return; // Evita llamadas simultáneas
+  isLoading = true;
+  if(musicAudio.paused) { // Pausa explícita antes de play
+    musicAudio.pause();
+  }
   musicAudio.volume=document.getElementById('volM').value/100;
   musicAudio.play().then(()=>{
+    isLoading = false;
     playing=true;updateBtn();setStatus('live','Reproduciendo');
     document.getElementById('vinyl').classList.add('spin');
     scheduleAd();
     requestWakeLock(); // 🔆 Activate wake lock
     log('▶ Iniciado','ok');
-  }).catch(e=>log('Error: '+e.message));
+  }).catch(e=>{isLoading=false;log('Error: '+e.message);});
 }
 function pauseMusic(){
   musicAudio.pause();playing=false;updateBtn();setStatus('','Pausado');
@@ -1158,11 +1165,11 @@ function pauseMusic(){
 function updateBtn(){const b=document.getElementById('playBtn');b.textContent=playing?'⏸':'▶';b.classList.toggle('ad',adPlaying);}
 function nextT(){
   if(curMode==='drive'){ nextDriveTrack(); return; }
-  if(!musicFiles.length)return; curTrack=(curTrack+1)%musicFiles.length; selectTrack(curTrack); if(playing)musicAudio.play();
+  if(!musicFiles.length)return; curTrack=(curTrack+1)%musicFiles.length; selectTrack(curTrack); if(playing&&!isLoading){ isLoading=true; musicAudio.play().then(()=>isLoading=false).catch(e=>{isLoading=false;log('Error: '+e.message);});}
 }
 function prevT(){
   if(curMode==='drive'){ prevDriveTrack(); return; }
-  if(!musicFiles.length)return; curTrack=(curTrack-1+musicFiles.length)%musicFiles.length; selectTrack(curTrack); if(playing)musicAudio.play();
+  if(!musicFiles.length)return; curTrack=(curTrack-1+musicFiles.length)%musicFiles.length; selectTrack(curTrack); if(playing&&!isLoading){ isLoading=true; musicAudio.play().then(()=>isLoading=false).catch(e=>{isLoading=false;log('Error: '+e.message);});}
 }
 function onMusicEnd(){
   if(curMode==='drive'){ nextDriveTrack(); return; }
@@ -1226,10 +1233,12 @@ function startFadeIn(){
 // ═══════════════════════════════════════════
 function playAd(){
   if(!driveJingles.length){log('⚠ Sin jingles en Drive','ad');if(playing){musicAudio.volume=document.getElementById('volM').value/100;scheduleAd();}return;}
+  if(isLoading){setTimeout(playAd,100);return;} // Reintenta si está cargando
+  isLoading=true;
   const jingle=driveJingles[jingleIndex];
   const src=`https://www.googleapis.com/drive/v3/files/${jingle.id}?alt=media&key=${API_KEY}`;
   musicAudio.pause();adPlaying=true;
-  adAudio.src=src;adAudio.volume=document.getElementById('volA').value/100;adAudio.play();
+  adAudio.src=src;adAudio.volume=document.getElementById('volA').value/100;adAudio.play().then(()=>{log('📢 Ad iniciado');}).catch(e=>{log('Error ad: '+e.message);});
   const biz=document.getElementById('bizName').value||'Tu Negocio';
   document.getElementById('adTitle').textContent='📢 '+biz.toUpperCase();
   document.getElementById('adSub').textContent=`Jingle ${jingleIndex+1}/${driveJingles.length} — ${jingle.name.replace(/\.[^.]+$/,'')}`;
@@ -1262,9 +1271,12 @@ function onAdEnd(){
   document.getElementById('adRing').style.strokeDashoffset=0;
   document.getElementById('adRingLbl').textContent='–';
   renderJingleQueue();updateStatsDisplay();
-  // Auto-resume music ALWAYS
+  // Auto-resume music ALWAYS — espera a que isLoading se libere
+  if(isLoading) { setTimeout(onAdEnd, 100); return; } // Reintenta en 100ms
+  isLoading = true;
   playing=true;
   musicAudio.play().then(()=>{
+    isLoading = false;
     document.getElementById('vinyl').classList.add('spin');
     setStatus('live','Reproduciendo');
     startFadeIn();
@@ -1274,7 +1286,7 @@ function onAdEnd(){
     else if(curMode==='drive'&&driveMusicFiles[driveMusicIndex]){document.getElementById('trackName').textContent=driveMusicFiles[driveMusicIndex].name.replace(/\.[^.]+$/,'');document.getElementById('trackSrc').textContent='☁️ Drive · '+(driveMusicIndex+1)+'/'+driveMusicFiles.length;}
     else if(curTrack>=0&&musicFiles[curTrack]){document.getElementById('trackName').textContent=musicFiles[curTrack].name.replace(/\.[^.]+$/,'');document.getElementById('trackSrc').textContent='Archivo local';}
     log('✅ Música reanudada automáticamente','ok');
-  }).catch(e=>log('Error al reanudar: '+e.message));
+  }).catch(e=>{isLoading=false;log('Error al reanudar: '+e.message);});
 }
 
 // ═══════════════════════════════════════════
