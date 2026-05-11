@@ -704,7 +704,7 @@ window.fbListenBlock = (clientId, callback) => {
 // ═══════════════════════════════════════════
 // CREDENTIALS
 // ═══════════════════════════════════════════
-const API_KEY = 'AIzaSyDpXD_7H5xhVZhb_y3DzXQ212xpNrs_pZw';
+const API_KEY = 'AIzaSyC0WNKPe5Ob_ssmJv3PccIbg5hbl7eFfCc';
 const DEFAULT_FOLDER_ID = '1tIXvw-hD2Vp2uDr-u5c919dxmbroPpi9';
 
 // ═══════════════════════════════════════════
@@ -866,7 +866,8 @@ function applyParams() {
         if(driveMusicFiles.length > 0) {
           driveMusicIndex = 0;
           selectDriveTrack(0);
-          playMusic(); // Inicia la reproducción automáticamente
+          // Espera a que el navegador cargue el audio antes de hacer play
+          setTimeout(() => playMusic(), 500);
           console.log('✅ Carpeta Drive precargada en V4 - listo para reproducir');
         }
       }, 200);
@@ -1147,9 +1148,10 @@ document.addEventListener('visibilitychange', () => {
 function togglePlay(){if(adPlaying||isFading)return;playing?pauseMusic():playMusic();}
 function playMusic(){
   if(!musicAudio.src||musicAudio.src===location.href){log('⚠ Sin fuente de audio');return;}
-  if(isLoading) return; // Evita llamadas simultáneas
+  if(isLoading){log('⚠ playMusic() llamado mientras isLoading=true');return;}
   isLoading = true;
   musicAudio.volume=document.getElementById('volM').value/100;
+  console.log('🎵 playMusic(): Intentando reproducir', musicAudio.src.substring(0,60)+'...');
   musicAudio.play().then(()=>{
     isLoading = false;
     playing=true;updateBtn();setStatus('live','Reproduciendo');
@@ -1157,7 +1159,7 @@ function playMusic(){
     scheduleAd();
     requestWakeLock(); // 🔆 Activate wake lock
     log('▶ Iniciado','ok');
-  }).catch(e=>{isLoading=false;log('Error: '+e.message);});
+  }).catch(e=>{isLoading=false;console.error('❌ Error en play():', e);log('Error: '+e.message);});
 }
 function pauseMusic(){
   musicAudio.pause();playing=false;updateBtn();setStatus('','Pausado');
