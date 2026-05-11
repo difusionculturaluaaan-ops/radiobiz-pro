@@ -1067,22 +1067,32 @@ function renderDriveMusicList() {
 }
 
 function selectDriveTrack(i) {
-  driveMusicIndex = i;
-  const f = driveMusicFiles[i];
-  // Evita archivos > 100MB (Google Drive timeout para streams)
-  if(f.size && parseInt(f.size) > 104857600) {
-    log('⚠ Archivo ' + f.name + ' muy pesado (>100MB), saltando...','warn');
-    if(playing) nextDriveTrack();
+  // Busca el próximo archivo válido (no demasiado pesado)
+  let attempts = 0;
+  while (attempts < driveMusicFiles.length) {
+    driveMusicIndex = (i + attempts) % driveMusicFiles.length;
+    const f = driveMusicFiles[driveMusicIndex];
+    if (!f || !f.id) { attempts++; continue; }
+    // Evita archivos > 100MB (Google Drive timeout para streams)
+    if(f.size && parseInt(f.size) > 104857600) {
+      log('⚠ Archivo ' + f.name + ' muy pesado (>100MB), saltando...','warn');
+      attempts++;
+      continue;
+    }
+    // Archivo válido encontrado
+    const streamUrl = `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`;
+    musicAudio.src = streamUrl;
+    curMode = 'drive';
+    document.getElementById('trackName').textContent = f.name.replace(/\.[^.]+$/,'');
+    document.getElementById('trackSrc').textContent = '☁️ Drive · ' + String(driveMusicIndex+1) + '/' + driveMusicFiles.length;
+    renderDriveMusicList();
+    if (playing && !isLoading) { isLoading = true; musicAudio.play().then(() => isLoading = false).catch(e => { isLoading = false; log('Error: ' + e.message); nextDriveTrack(); }); }
+    log('☁️ Drive track: ' + f.name, 'drive');
     return;
   }
-  const streamUrl = `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`;
-  musicAudio.src = streamUrl;
-  curMode = 'drive';
-  document.getElementById('trackName').textContent = f.name.replace(/\.[^.]+$/,'');
-  document.getElementById('trackSrc').textContent = '☁️ Drive · ' + String(i+1) + '/' + driveMusicFiles.length;
-  renderDriveMusicList();
-  if (playing && !isLoading) { isLoading = true; musicAudio.play().then(() => isLoading = false).catch(e => { isLoading = false; log('Error: ' + e.message); nextDriveTrack(); }); }
-  log('☁️ Drive track: ' + f.name, 'drive');
+  // Si no encuentra ningún archivo válido, mostrar error
+  log('❌ No hay archivos de audio válidos en la carpeta','err');
+  musicAudio.src = '';
 }
 
 function nextDriveTrack() {
