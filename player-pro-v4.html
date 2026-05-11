@@ -1265,6 +1265,7 @@ function playAd(){
 function startRing(){clearInterval(adRingTimer);const ring=document.getElementById('adRing'),lbl=document.getElementById('adRingLbl');ring.style.strokeDasharray='100';adRingTimer=setInterval(()=>{if(!adAudio.duration)return;lbl.textContent=Math.ceil(adAudio.duration-adAudio.currentTime)+'s';ring.style.strokeDashoffset=(adAudio.currentTime/adAudio.duration)*100;},300);}
 
 function onAdEnd(){
+  console.log('🔔 onAdEnd() - Jingle terminó, reanudando música...');
   clearInterval(adRingTimer);adPlaying=false;adAudio.ontimeupdate=null;adAudio.onloadedmetadata=null;
   // Advance rotation
   jingleIndex=(jingleIndex+1)%driveJingles.length;
@@ -1278,10 +1279,12 @@ function onAdEnd(){
   document.getElementById('adRingLbl').textContent='–';
   renderJingleQueue();updateStatsDisplay();
   // Auto-resume music ALWAYS — espera a que isLoading se libere
-  if(isLoading) { setTimeout(onAdEnd, 200); return; } // Reintenta en 200ms
+  if(isLoading) { console.log('⏳ isLoading=true, retrying onAdEnd in 200ms...'); setTimeout(onAdEnd, 200); return; }
   isLoading = true;
   playing=true;
+  console.log('🎵 Intentando reanudar música, currentTime:', musicAudio.currentTime, 'paused:', musicAudio.paused);
   musicAudio.play().then(()=>{
+    console.log('✅ play() exitoso - música reanudada');
     isLoading = false;
     document.getElementById('vinyl').classList.add('spin');
     setStatus('live','Reproduciendo');
@@ -1293,6 +1296,7 @@ function onAdEnd(){
     else if(curTrack>=0&&musicFiles[curTrack]){document.getElementById('trackName').textContent=musicFiles[curTrack].name.replace(/\.[^.]+$/,'');document.getElementById('trackSrc').textContent='Archivo local';}
     log('✅ Música reanudada automáticamente','ok');
   }).catch(e=>{
+    console.error('❌ onAdEnd() - Error en play():', e.name, e.message);
     isLoading=false;
     if(curMode==='drive'&&driveMusicFiles.length>0){
       log('⚠ Archivo muy pesado, saltando al siguiente...','warn');
