@@ -1067,13 +1067,19 @@ function renderDriveMusicList() {
 function selectDriveTrack(i) {
   driveMusicIndex = i;
   const f = driveMusicFiles[i];
+  // Evita archivos > 100MB (Google Drive timeout para streams)
+  if(f.size && parseInt(f.size) > 104857600) {
+    log('⚠ Archivo ' + f.name + ' muy pesado (>100MB), saltando...','warn');
+    if(playing) nextDriveTrack();
+    return;
+  }
   const streamUrl = `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`;
   musicAudio.src = streamUrl;
   curMode = 'drive';
   document.getElementById('trackName').textContent = f.name.replace(/\.[^.]+$/,'');
   document.getElementById('trackSrc').textContent = '☁️ Drive · ' + String(i+1) + '/' + driveMusicFiles.length;
   renderDriveMusicList();
-  if (playing && !isLoading) { isLoading = true; musicAudio.play().then(() => isLoading = false).catch(e => { isLoading = false; log('Error: ' + e.message); }); }
+  if (playing && !isLoading) { isLoading = true; musicAudio.play().then(() => isLoading = false).catch(e => { isLoading = false; log('Error: ' + e.message); nextDriveTrack(); }); }
   log('☁️ Drive track: ' + f.name, 'drive');
 }
 
@@ -1272,7 +1278,7 @@ function onAdEnd(){
   document.getElementById('adRingLbl').textContent='–';
   renderJingleQueue();updateStatsDisplay();
   // Auto-resume music ALWAYS — espera a que isLoading se libere
-  if(isLoading) { setTimeout(onAdEnd, 100); return; } // Reintenta en 100ms
+  if(isLoading) { setTimeout(onAdEnd, 200); return; } // Reintenta en 200ms
   isLoading = true;
   playing=true;
   musicAudio.play().then(()=>{
@@ -1286,7 +1292,15 @@ function onAdEnd(){
     else if(curMode==='drive'&&driveMusicFiles[driveMusicIndex]){document.getElementById('trackName').textContent=driveMusicFiles[driveMusicIndex].name.replace(/\.[^.]+$/,'');document.getElementById('trackSrc').textContent='☁️ Drive · '+(driveMusicIndex+1)+'/'+driveMusicFiles.length;}
     else if(curTrack>=0&&musicFiles[curTrack]){document.getElementById('trackName').textContent=musicFiles[curTrack].name.replace(/\.[^.]+$/,'');document.getElementById('trackSrc').textContent='Archivo local';}
     log('✅ Música reanudada automáticamente','ok');
-  }).catch(e=>{isLoading=false;log('Error al reanudar: '+e.message);});
+  }).catch(e=>{
+    isLoading=false;
+    if(curMode==='drive'&&driveMusicFiles.length>0){
+      log('⚠ Archivo muy pesado, saltando al siguiente...','warn');
+      nextDriveTrack();
+    } else {
+      log('Error al reanudar: '+e.message);
+    }
+  });
 }
 
 // ═══════════════════════════════════════════
