@@ -854,24 +854,38 @@ function applyParams() {
   // Auto-load Drive music folder from URL param or localStorage
   const savedMusicFolder = PARAMS.musicfolder || localStorage.getItem('rbz_music_folder');
   console.log('🎵 Intentando cargar carpeta de música:', savedMusicFolder);
+  console.log('   PARAMS.musicfolder:', PARAMS.musicfolder);
+  console.log('   localStorage rbz_music_folder:', localStorage.getItem('rbz_music_folder'));
   if(savedMusicFolder) {
     driveMusicFolderId = savedMusicFolder;
     document.getElementById('musicFolderId').value = savedMusicFolder;
+    console.log('⏱ Esperando 1500ms antes de cargar Drive música...');
     setTimeout(async () => {
-      console.log('📁 Cargando drive music...');
+      console.log('📁 Iniciando loadDriveMusic con ID:', savedMusicFolder);
       await loadDriveMusic(savedMusicFolder);
+      console.log('📊 Después de loadDriveMusic, driveMusicFiles tiene', driveMusicFiles.length, 'archivos');
       // Auto-switch to Drive tab and render
       setTimeout(() => {
+        console.log('🎛 Cambiando a pestaña drive...');
         switchTab('drive');
+        console.log('✨ Después de switchTab, driveMusicFiles:', driveMusicFiles.length);
         if(driveMusicFiles.length > 0) {
+          console.log('✅ Encontrados archivos, llamando selectDriveTrack(0)...');
           driveMusicIndex = 0;
           selectDriveTrack(0);
           // Espera a que el navegador cargue el audio antes de hacer play
-          setTimeout(() => playMusic(), 500);
-          console.log('✅ Carpeta Drive precargada en V4 - listo para reproducir');
+          setTimeout(() => {
+            console.log('▶️ Llamando playMusic() después de 500ms...');
+            playMusic();
+            console.log('✅ Carpeta Drive precargada en V4 - listo para reproducir');
+          }, 500);
+        } else {
+          console.error('❌ driveMusicFiles está vacío después de loadDriveMusic');
         }
       }, 200);
     }, 1500);
+  } else {
+    console.warn('⚠ No hay musicfolder configurado en URL ni en localStorage');
   }
 
   // Apply locked mode
@@ -1013,30 +1027,37 @@ function loadRadio(name){const url=document.getElementById('radioUrl').value.tri
 // ═══════════════════════════════════════════
 async function loadDriveMusic(folderId) {
   const id = folderId || document.getElementById('musicFolderId').value.trim() || driveMusicFolderId;
-  if (!id) { log('⚠ Ingresa un Folder ID de música','info'); return; }
-  console.log('📁 loadDriveMusic llamado con:', id);
+  console.log('📁 loadDriveMusic iniciado - folderId:', folderId, 'id final:', id);
+  if (!id) {
+    console.error('❌ No hay Folder ID disponible');
+    log('⚠ Ingresa un Folder ID de música','info');
+    return;
+  }
   driveMusicFolderId = id;
   document.getElementById('musicFolderId').value = id;
   document.getElementById('driveMusicList').innerHTML = '<div style="text-align:center;color:var(--info);font-family:\'JetBrains Mono\',monospace;font-size:.66rem;padding:12px 0;">🔄 Cargando playlist...</div>';
   const url = `https://www.googleapis.com/drive/v3/files?q='${id}'+in+parents+and+(mimeType='audio/mpeg'+or+mimeType='audio/wav'+or+mimeType='audio/ogg'+or+mimeType='audio/mp4'+or+mimeType='audio/x-m4a')&key=${API_KEY}&fields=files(id,name,modifiedTime,size)&orderBy=name`;
   try {
-    console.log('📡 Fetching:', url.substring(0, 80) + '...');
+    console.log('📡 Fetching Google Drive API:', url.substring(0, 100) + '...');
     const r = await fetch(url);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    console.log('📩 Respuesta HTTP:', r.status, r.statusText);
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + r.statusText);
     const data = await r.json();
     const files = data.files || [];
-    console.log('✅ Archivos encontrados:', files.length);
+    console.log('✅ Archivos encontrados en Drive:', files.length);
     if (!files.length) {
+      console.warn('⚠ La carpeta está vacía');
       document.getElementById('driveMusicList').innerHTML = '<div style="text-align:center;color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:.66rem;padding:12px 0;">Sin archivos de audio en esta carpeta</div>';
       return;
     }
+    console.log('📋 Archivos recibidos:', files.map(f => ({name: f.name, id: f.id, size: f.size})));
     driveMusicFiles = files;
+    console.log('✨ driveMusicFiles actualizado:', driveMusicFiles.length, 'archivos');
     applyDriveMusicOrder();
-    // Save folder to localStorage for next time
     localStorage.setItem('rbz_music_folder', id);
     log('☁️ Playlist Drive: ' + files.length + ' canciones', 'drive');
   } catch(e) {
-    console.error('❌ Error en loadDriveMusic:', e);
+    console.error('❌ Error en loadDriveMusic:', e.name, e.message);
     document.getElementById('driveMusicList').innerHTML = `<div style="text-align:center;color:var(--warn);font-family:'JetBrains Mono',monospace;font-size:.66rem;padding:12px 0;">Error: ${e.message}</div>`;
     log('⚠ Error cargando música de Drive: ' + e.message);
   }
@@ -1067,20 +1088,33 @@ function renderDriveMusicList() {
 }
 
 function selectDriveTrack(i) {
+  console.log('🔍 selectDriveTrack(', i, ') - driveMusicFiles.length:', driveMusicFiles.length);
+  if (!driveMusicFiles || driveMusicFiles.length === 0) {
+    console.error('❌ driveMusicFiles está vacío o no existe');
+    log('❌ No hay archivos de música cargados','err');
+    return;
+  }
   // Busca el próximo archivo válido (no demasiado pesado)
   let attempts = 0;
   while (attempts < driveMusicFiles.length) {
     driveMusicIndex = (i + attempts) % driveMusicFiles.length;
     const f = driveMusicFiles[driveMusicIndex];
-    if (!f || !f.id) { attempts++; continue; }
+    console.log('  Intento', attempts, ': archivo', driveMusicIndex, '=', f?.name, 'id=', f?.id, 'size=', f?.size);
+    if (!f || !f.id) {
+      console.log('    ↳ Sin archivo o sin ID, saltando');
+      attempts++;
+      continue;
+    }
     // Evita archivos > 100MB (Google Drive timeout para streams)
     if(f.size && parseInt(f.size) > 104857600) {
+      console.log('    ↳ Archivo muy pesado (', f.size, 'bytes), saltando');
       log('⚠ Archivo ' + f.name + ' muy pesado (>100MB), saltando...','warn');
       attempts++;
       continue;
     }
     // Archivo válido encontrado
     const streamUrl = `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`;
+    console.log('✅ Archivo válido encontrado:', f.name, 'URL:', streamUrl.substring(0, 80) + '...');
     musicAudio.src = streamUrl;
     curMode = 'drive';
     document.getElementById('trackName').textContent = f.name.replace(/\.[^.]+$/,'');
@@ -1091,6 +1125,7 @@ function selectDriveTrack(i) {
     return;
   }
   // Si no encuentra ningún archivo válido, mostrar error
+  console.error('❌ No se encontró ningún archivo válido después de', attempts, 'intentos');
   log('❌ No hay archivos de audio válidos en la carpeta','err');
   musicAudio.src = '';
 }
