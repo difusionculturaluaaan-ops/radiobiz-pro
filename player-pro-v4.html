@@ -1001,7 +1001,7 @@ function switchTab(t){
   document.getElementById('tab-'+t)?.classList.add('on');
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.getElementById('panel-'+t).classList.add('on');
-  if(t==='drive' && driveMusicFolderId) loadDriveMusic();
+  // No recargar Drive aquí — ya está cargado en init(), el usuario puede hacer click en 🔍 para recargar
 }
 function setPreset(url,name){document.getElementById('radioUrl').value=url;loadRadio(name);}
 function loadRadio(name){const url=document.getElementById('radioUrl').value.trim();if(!url)return;musicAudio.src=url;document.getElementById('trackName').textContent=name||'Radio Online';document.getElementById('trackSrc').textContent='Stream en línea';curMode='radio';log('📡 Radio: '+(name||url),'ok');}
