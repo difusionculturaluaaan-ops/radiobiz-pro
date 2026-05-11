@@ -866,6 +866,7 @@ function applyParams() {
         if(driveMusicFiles.length > 0) {
           driveMusicIndex = 0;
           selectDriveTrack(0);
+          playMusic(); // Inicia la reproducción automáticamente
           console.log('✅ Carpeta Drive precargada en V4 - listo para reproducir');
         }
       }, 200);
@@ -1148,9 +1149,6 @@ function playMusic(){
   if(!musicAudio.src||musicAudio.src===location.href){log('⚠ Sin fuente de audio');return;}
   if(isLoading) return; // Evita llamadas simultáneas
   isLoading = true;
-  if(musicAudio.paused) { // Pausa explícita antes de play
-    musicAudio.pause();
-  }
   musicAudio.volume=document.getElementById('volM').value/100;
   musicAudio.play().then(()=>{
     isLoading = false;
